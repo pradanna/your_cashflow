@@ -182,4 +182,49 @@ class ReportController extends Controller
 
         return $pdf->stream('Statement-' . $contact->name . '.pdf');
     }
+
+    /**
+     * Laporan Ringkasan Hutang Piutang per Kontak (Summary).
+     */
+    public function debtSummary(Request $request)
+    {
+        $user = $request->user();
+        $search = $request->input('search');
+
+        // Query: Ambil Debt yang belum lunas (remaining > 0) dengan relasi detail
+        $query = Debt::where('user_id', $user->id)
+            ->where('remaining', '>', 0)
+            ->with(['contact', 'order.items', 'purchase.items']);
+
+        if ($search) {
+            $query->whereHas('contact', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        $allDebts = $query->latest()->get();
+
+        // Grouping data manual collection
+        $grouped = $allDebts->groupBy(function ($item) {
+            return $item->type . '-' . $item->contact_id;
+        });
+
+        $results = $grouped->map(function ($items) {
+            $first = $items->first();
+            return [
+                'contact_id' => $first->contact_id,
+                'type' => $first->type,
+                'contact_name' => $first->contact->name ?? 'Unknown',
+                'total_remaining' => $items->sum('remaining'),
+                'transaction_count' => $items->count(),
+                'details' => $items->values(), // Sertakan detail untuk modal
+            ];
+        })->values();
+
+        return Inertia::render('Reports/DebtSummary', [
+            'payables' => $results->where('type', 'PAYABLE')->values(),
+            'receivables' => $results->where('type', 'RECEIVABLE')->values(),
+            'filters' => ['search' => $search],
+        ]);
+    }
 }

@@ -80,7 +80,7 @@ class StockController extends Controller
             'name' => 'required|string|max:255',
             'unit' => 'required|string|max:50',
             'qty' => 'required|numeric|min:0', // Initial Qty
-            'avg_cost' => 'required|numeric|min:0', // Initial Cost
+            'selling_price' => 'required|numeric|min:0', // Initial Cost
             'selling_price' => 'required|numeric|min:0',
         ]);
 
@@ -90,7 +90,7 @@ class StockController extends Controller
                 'name' => $validated['name'],
                 'unit' => $validated['unit'],
                 'qty' => $validated['qty'],
-                'avg_cost' => $validated['avg_cost'],
+                'selling_price' => $validated['selling_price'],
                 'selling_price' => $validated['selling_price'],
             ]);
 
@@ -101,7 +101,7 @@ class StockController extends Controller
                     'type' => 'ADJUSTMENT', // Initial Balance considered as Adjustment
                     'qty' => $validated['qty'],
                     'current_qty' => $validated['qty'],
-                    'current_avg_cost' => $validated['avg_cost'],
+                    'current_selling_price' => $validated['selling_price'],
                 ]);
             }
         });
@@ -201,7 +201,7 @@ class StockController extends Controller
                 'type' => $validated['type'],
                 'qty' => $qtyChange,
                 'current_qty' => $stock->qty,
-                'current_avg_cost' => $stock->avg_cost, // Manual adjustment keeps same avg cost
+                'current_selling_price' => $stock->selling_price, // Manual adjustment keeps same avg cost
             ]);
         });
 

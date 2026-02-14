@@ -55,7 +55,7 @@ class DashboardController extends Controller
             'accounts' => $accounts,
             'payables' => $activeDebts->where('type', 'PAYABLE')->values(),
             'receivables' => $activeDebts->where('type', 'RECEIVABLE')->values(),
-            'stocks' => $stocks->sortByDesc(fn($s) => $s->qty * $s->avg_cost)->take(5)->values(),
+            'stocks' => $stocks->sortByDesc(fn($s) => $s->qty * $s->selling_price)->take(5)->values(),
         ]);
     }
 }

@@ -48,7 +48,7 @@ export default function StockIndex({
         name: "",
         unit: "",
         qty: "",
-        avg_cost: "",
+        selling_price: "",
         selling_price: "",
     });
 
@@ -289,7 +289,7 @@ export default function StockIndex({
                                                 </td>
                                                 <td className="px-6 py-4 text-right text-gray-600">
                                                     {formatRupiah(
-                                                        stock.avg_cost,
+                                                        stock.selling_price,
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-right text-gray-600">
@@ -300,7 +300,7 @@ export default function StockIndex({
                                                 <td className="px-6 py-4 text-right text-gray-900 font-medium">
                                                     {formatRupiah(
                                                         stock.qty *
-                                                            stock.avg_cost,
+                                                            stock.selling_price,
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -554,10 +554,10 @@ export default function StockIndex({
                                 <TextInput
                                     type="number"
                                     className="w-full mt-1"
-                                    value={createForm.data.avg_cost}
+                                    value={createForm.data.selling_price}
                                     onChange={(e) =>
                                         createForm.setData(
-                                            "avg_cost",
+                                            "selling_price",
                                             e.target.value,
                                         )
                                     }
@@ -565,7 +565,7 @@ export default function StockIndex({
                                     placeholder="0"
                                 />
                                 <InputError
-                                    message={createForm.errors.avg_cost}
+                                    message={createForm.errors.selling_price}
                                     className="mt-2"
                                 />
                             </div>

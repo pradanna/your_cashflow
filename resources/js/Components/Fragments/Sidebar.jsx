@@ -95,6 +95,11 @@ export default function Sidebar() {
                     icon: FileText,
                 },
                 {
+                    label: "Ringkasan Hutang & Piutang",
+                    href: "/reports/debt-summary",
+                    icon: FileText,
+                },
+                {
                     label: "Statement",
                     href: "/reports/statements",
                     icon: ClipboardList,

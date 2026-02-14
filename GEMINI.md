@@ -41,7 +41,7 @@
     - `id`, `user_id`, `name`.
     - `unit` (pcs, kg, box).
     - `qty` (decimal, default 0) -> _Stok saat ini_.
-    - `avg_cost` (decimal, default 0) -> _Harga Modal Rata-rata (Moving Average)_.
+    - `selling_price` (decimal, default 0) -> _Harga Modal Rata-rata (Moving Average)_.
     - `selling_price` (decimal, default 0) -> _Harga Jual Default_.
 
 ### B. Transaction Headers (Dokumen Pemicu)
@@ -76,7 +76,7 @@
     - **References:** `order_id` (Pelunasan Order), `purchase_id` (Pelunasan Belanja), `debt_id` (Cicilan Hutang).
 - **`stock_mutations`**: History Stok.
     - `id`, `stock_id`, `type` (IN/OUT/ADJUSTMENT).
-    - `qty`, `current_qty` (Snapshot), `current_avg_cost` (Snapshot HPP).
+    - `qty`, `current_qty` (Snapshot), `current_selling_price` (Snapshot HPP).
     - `reference_id` (Poly: order_id / purchase_id).
 
 ## 5. Business Logic & Workflows
@@ -101,7 +101,7 @@ Saldo di tabel `accounts` dihitung otomatis via Model Observer saat `transaction
 
 ### C. Stock Valuation (Moving Average Cost)
 
-Harga modal (`stocks.avg_cost`) diupdate setiap kali ada Pembelian (Purchase) baru.
+Harga modal (`stocks.selling_price`) diupdate setiap kali ada Pembelian (Purchase) baru.
 
 - **Formula:** `((Old Qty * Old Avg) + (New Qty * New Price)) / (Old Qty + New Qty)`
 - Ini memastikan nilai aset dan HPP selalu akurat walau harga beli dari supplier naik-turun.

@@ -19,7 +19,7 @@ return new class extends Migration
 
             // Snapshot data saat kejadian (Penting untuk audit)
             $table->decimal('current_qty', 10, 2);
-            $table->decimal('current_avg_cost', 15, 2);
+            $table->decimal('current_selling_price', 15, 2);
 
             // References
             $table->foreignId('order_id')->nullable()->constrained()->nullOnDelete();

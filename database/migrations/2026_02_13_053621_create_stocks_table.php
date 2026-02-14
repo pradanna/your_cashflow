@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('unit'); // pcs, kg, dll
             $table->decimal('qty', 10, 2)->default(0);
-            $table->decimal('avg_cost', 15, 2)->default(0); // Harga Modal Rata-rata
+            $table->decimal('selling_price', 15, 2)->default(0); // Harga Modal Rata-rata
             $table->decimal('selling_price', 15, 2)->default(0); // Harga Jual Default
             $table->timestamps();
         });

@@ -43,6 +43,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/items/store', [CatalogController::class, 'storeItem'])
         ->name('items.store_custom');
 
+    Route::delete('/items/{item}', [CatalogController::class, 'destroyItem'])
+        ->name('items.destroy');
+
+
     // Route untuk simpan Item Supplier
     Route::post('/supplier-items/store', [CatalogController::class, 'storeSupplierItem'])
         ->name('supplier-items.store_custom');
@@ -78,6 +82,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/statements', [ReportController::class, 'customerStatement'])->name('statements');
         Route::get('/stock-mutations', [ReportController::class, 'stockMutations'])->name('stock-mutations');
         Route::get('/statements/pdf', [ReportController::class, 'customerStatementPdf'])->name('statements.pdf');
+        Route::get('/debt-summary', [ReportController::class, 'debtSummary'])->name('debt-summary');
     });
 });
 

@@ -159,7 +159,7 @@ class PurchaseController extends Controller
                     $stock = Stock::find($itemData['stock_id']);
                     if ($stock) {
                         $oldQty = $stock->qty;
-                        $oldAvgCost = $stock->avg_cost;
+                        $oldAvgCost = $stock->selling_price;
                         $newQty = $itemData['qty'];
                         $newPrice = $itemData['price'];
 
@@ -168,7 +168,7 @@ class PurchaseController extends Controller
 
                         $stock->update([
                             'qty' => $totalQty,
-                            'avg_cost' => $newAvgCost,
+                            'selling_price' => $newAvgCost,
                         ]);
                     }
                 }
@@ -247,7 +247,7 @@ class PurchaseController extends Controller
                 if ($item->stock_id) {
                     $stock = Stock::find($item->stock_id);
                     if ($stock) {
-                        $currentTotalValue = $stock->qty * $stock->avg_cost;
+                        $currentTotalValue = $stock->qty * $stock->selling_price;
                         $removedValue = $item->qty * $item->price;
                         $newQty = $stock->qty - $item->qty;
                         $newTotalValue = $currentTotalValue - $removedValue;
@@ -257,7 +257,7 @@ class PurchaseController extends Controller
 
                         $stock->update([
                             'qty' => $newQty,
-                            'avg_cost' => $newAvgCost,
+                            'selling_price' => $newAvgCost,
                         ]);
                     }
                 }
@@ -286,7 +286,7 @@ class PurchaseController extends Controller
                     $stock = Stock::find($itemData['stock_id']);
                     if ($stock) {
                         $oldQty = $stock->qty;
-                        $oldAvgCost = $stock->avg_cost;
+                        $oldAvgCost = $stock->selling_price;
                         $newQty = $itemData['qty'];
                         $newPrice = $itemData['price'];
 
@@ -296,7 +296,7 @@ class PurchaseController extends Controller
 
                         $stock->update([
                             'qty' => $totalQty,
-                            'avg_cost' => $newAvgCost,
+                            'selling_price' => $newAvgCost,
                         ]);
                     }
                 }
@@ -390,7 +390,7 @@ class PurchaseController extends Controller
                 if ($item->stock_id) {
                     $stock = $item->stock;
                     if ($stock) {
-                        $currentTotalValue = $stock->qty * $stock->avg_cost;
+                        $currentTotalValue = $stock->qty * $stock->selling_price;
                         $removedValue = $item->qty * $item->price;
                         $newQty = $stock->qty - $item->qty;
                         $newTotalValue = $currentTotalValue - $removedValue;
@@ -398,7 +398,7 @@ class PurchaseController extends Controller
 
                         $stock->update([
                             'qty' => $newQty,
-                            'avg_cost' => $newAvgCost,
+                            'selling_price' => $newAvgCost,
                         ]);
                     }
                 }

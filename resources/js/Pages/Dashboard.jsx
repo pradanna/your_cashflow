@@ -269,7 +269,8 @@ export default function Dashboard({
                                             </span>
                                             <span className="text-sm font-bold text-purple-600">
                                                 {formatRupiah(
-                                                    stock.qty * stock.avg_cost,
+                                                    stock.qty *
+                                                        stock.selling_price,
                                                 )}
                                             </span>
                                         </div>
@@ -283,7 +284,9 @@ export default function Dashboard({
                                             </span>
                                             <span>
                                                 HPP:{" "}
-                                                {formatRupiah(stock.avg_cost)}
+                                                {formatRupiah(
+                                                    stock.selling_price,
+                                                )}
                                             </span>
                                         </div>
                                     </div>
