@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Debt;
 use App\Models\Transaction;
@@ -225,6 +226,79 @@ class ReportController extends Controller
             'payables' => $results->where('type', 'PAYABLE')->values(),
             'receivables' => $results->where('type', 'RECEIVABLE')->values(),
             'filters' => ['search' => $search],
+        ]);
+    }
+
+    public function profitLoss(Request $request)
+    {
+        $user = $request->user();
+        $startDate = $request->input('date_start', now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
+        $categoryId = $request->input('category_id');
+        $contactId = $request->input('contact_id');
+
+        // Base Query
+        $query = Transaction::where('user_id', $user->id)
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->with(['category', 'order.contact', 'purchase.contact', 'debt.contact']);
+
+        if ($categoryId) $query->where('category_id', $categoryId);
+
+        if ($contactId) {
+            $query->where(function ($q) use ($contactId) {
+                $q->whereHas('order', fn($q2) => $q2->where('contact_id', $contactId))
+                    ->orWhereHas('purchase', fn($q3) => $q3->where('contact_id', $contactId))
+                    ->orWhereHas('debt', fn($q4) => $q4->where('contact_id', $contactId));
+            });
+        }
+
+        $transactions = $query->get();
+
+        // Helper: Get Contact Name
+        $getContactName = function ($t) {
+            return $t->order?->contact?->name
+                ?? $t->purchase?->contact?->name
+                ?? $t->debt?->contact?->name
+                ?? 'General / Lainnya';
+        };
+
+        // Helper: Format Chart Data
+        $formatChart = fn($grouped) => $grouped->map(fn($val, $key) => ['name' => $key, 'value' => $val])->values();
+        $formatTrend = fn($grouped) => $grouped->map(fn($val, $key) => ['date' => $key, 'amount' => $val])->values();
+
+        // --- INCOME ---
+        $incomeTrans = $transactions->where('type', 'INCOME');
+        $incomeTotal = $incomeTrans->sum('amount');
+        $incomeByCategory = $incomeTrans->groupBy(fn($t) => $t->category->name ?? 'Uncategorized')->map->sum('amount')->sortDesc();
+        $incomeByContact = $incomeTrans->groupBy($getContactName)->map->sum('amount')->sortDesc();
+        $incomeTrend = $incomeTrans->groupBy('transaction_date')->map->sum('amount')->sortKeys();
+
+        // --- EXPENSE ---
+        $expenseTrans = $transactions->where('type', 'EXPENSE');
+        $expenseTotal = $expenseTrans->sum('amount');
+        $expenseByCategory = $expenseTrans->groupBy(fn($t) => $t->category->name ?? 'Uncategorized')->map->sum('amount')->sortDesc();
+        $expenseByContact = $expenseTrans->groupBy($getContactName)->map->sum('amount')->sortDesc();
+        $expenseTrend = $expenseTrans->groupBy('transaction_date')->map->sum('amount')->sortKeys();
+
+        return Inertia::render('Reports/ProfitLoss', [
+            'filters' => compact('startDate', 'endDate', 'categoryId', 'contactId'),
+            'summary' => [
+                'income_total' => $incomeTotal,
+                'expense_total' => $expenseTotal,
+                'net_profit' => $incomeTotal - $expenseTotal,
+            ],
+            'income' => [
+                'by_category' => $formatChart($incomeByCategory),
+                'by_contact' => $formatChart($incomeByContact),
+                'trend' => $formatTrend($incomeTrend),
+            ],
+            'expense' => [
+                'by_category' => $formatChart($expenseByCategory),
+                'by_contact' => $formatChart($expenseByContact),
+                'trend' => $formatTrend($expenseTrend),
+            ],
+            'categories' => Category::where('user_id', $user->id)->orderBy('name')->get(),
+            'contacts' => Contact::where('user_id', $user->id)->orderBy('name')->get(),
         ]);
     }
 }

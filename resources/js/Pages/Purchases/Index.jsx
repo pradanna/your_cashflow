@@ -553,7 +553,7 @@ export default function PurchaseIndex({
                                     )}
                                     onChange={(selectedOption) =>
                                         setData(
-                                            "supplier_id",
+                                            "contact_id",
                                             selectedOption
                                                 ? selectedOption.value
                                                 : "",
