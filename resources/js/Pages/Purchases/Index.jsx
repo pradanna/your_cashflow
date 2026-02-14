@@ -117,13 +117,15 @@ export default function PurchaseIndex({
                 .map((item) => `${item.item_name} (${item.qty})`)
                 .join(", ");
 
-            // Hanya update jika summary berbeda dengan note yang sekarang
-            // Ini mencegah loop tak terbatas
-            if (summary !== data.note) {
+            // Gunakan pengecekan yang lebih ketat
+            if (summary && summary !== data.note) {
                 setData("note", summary);
             }
+        } else if (data.items.length === 0 && data.note !== "") {
+            // Opsional: Kosongkan note jika item kosong
+            setData("note", "");
         }
-    }, [data.items, data.note]);
+    }, [data.items]); // Hapus data.note dari dependensi untuk mencegah loop
 
     // --- HANDLERS: CREATE / EDIT ---
     const openCreateModal = () => {
@@ -170,12 +172,17 @@ export default function PurchaseIndex({
     // --- HANDLERS: ITEMS ---
     const handleAddItem = (e) => {
         e.preventDefault();
-        if (!newItem.item_name || !newItem.price || !newItem.qty) return;
+
+        // Validasi input
+        if (!newItem.item_name || !newItem.price || newItem.qty <= 0) {
+            alert("Mohon isi nama barang, harga, dan jumlah dengan benar.");
+            return;
+        }
 
         const itemToAdd = {
-            ...newItem,
-            qty: parseFloat(newItem.qty),
-            price: parseFloat(newItem.price),
+            item_name: newItem.item_name,
+            qty: Number(newItem.qty),
+            price: Number(newItem.price),
         };
 
         setData("items", [...data.items, itemToAdd]);
@@ -548,9 +555,12 @@ export default function PurchaseIndex({
                                     classNamePrefix="react-select" // Berguna untuk styling custom
                                     options={contactOptions}
                                     // Cari objek yang value-nya sama dengan data.contact_id agar label tetap muncul
-                                    value={contactOptions.find(
-                                        (opt) => opt.value === data.contact_id,
-                                    )}
+                                    value={
+                                        contactOptions.find(
+                                            (opt) =>
+                                                opt.value === data.contact_id,
+                                        ) || null
+                                    }
                                     onChange={(selectedOption) =>
                                         setData(
                                             "contact_id",
