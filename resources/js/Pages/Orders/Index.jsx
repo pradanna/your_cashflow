@@ -40,8 +40,12 @@ export default function OrderIndex({
     // State untuk filter
     const [search, setSearch] = useState(filters.search || "");
     const [status, setStatus] = useState(filters.status || "");
-    const [dateStart, setDateStart] = useState(filters.date_start || "");
-    const [dateEnd, setDateEnd] = useState(filters.date_end || "");
+    const [dateStart, setDateStart] = useState(
+        filters.date_start || new Date().toISOString().split("T")[0],
+    );
+    const [dateEnd, setDateEnd] = useState(
+        filters.date_end || new Date().toISOString().split("T")[0],
+    );
 
     // State Modal
     const [isCreateOpen, setCreateOpen] = useState(false);

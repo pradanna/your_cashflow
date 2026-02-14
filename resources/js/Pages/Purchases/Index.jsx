@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react"; // Tambahkan useRef
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, Link, router, useForm } from "@inertiajs/react";
 import {
@@ -38,8 +38,12 @@ export default function PurchaseIndex({
     // --- STATE ---
     const [search, setSearch] = useState(filters.search || "");
     const [status, setStatus] = useState(filters.status || "");
-    const [dateStart, setDateStart] = useState(filters.date_start || "");
-    const [dateEnd, setDateEnd] = useState(filters.date_end || "");
+    const [dateStart, setDateStart] = useState(
+        filters.date_start || new Date().toISOString().split("T")[0],
+    );
+    const [dateEnd, setDateEnd] = useState(
+        filters.date_end || new Date().toISOString().split("T")[0],
+    );
 
     // Modals
     const [isCreateOpen, setCreateOpen] = useState(false);
@@ -88,8 +92,17 @@ export default function PurchaseIndex({
         qty: 1,
     });
 
+    const isFirstRun = useRef(true);
+
     // --- FILTERS ---
     useEffect(() => {
+        // Jika ini adalah render pertama (saat halaman baru dimuat atau pindah page),
+        // JANGAN jalankan router.get.
+        if (isFirstRun.current) {
+            isFirstRun.current = false;
+            return;
+        }
+
         const timer = setTimeout(() => {
             router.get(
                 route("purchases.index"),
@@ -563,6 +576,7 @@ export default function PurchaseIndex({
                                     }
                                     onChange={(selectedOption) => {
                                         // Pastikan menyimpan nilainya saja, bukan objeknya
+                                        console.log(selectedOption);
                                         setData(
                                             "contact_id",
                                             selectedOption

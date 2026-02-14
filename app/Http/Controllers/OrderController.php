@@ -42,13 +42,12 @@ class OrderController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filter: Date Range
-        if ($request->date_start) {
-            $query->whereDate('transaction_date', '>=', $request->date_start);
-        }
-        if ($request->date_end) {
-            $query->whereDate('transaction_date', '<=', $request->date_end);
-        }
+        // Filter: Date Range (Default: Hari ini)
+        $startDate = $request->input('date_start', date('Y-m-d'));
+        $endDate = $request->input('date_end', date('Y-m-d'));
+
+        $query->whereDate('transaction_date', '>=', $startDate)
+            ->whereDate('transaction_date', '<=', $endDate);
 
         // Sorting & Pagination
         $orders = $query->orderBy('transaction_date', 'desc')
@@ -85,7 +84,12 @@ class OrderController extends Controller
 
         return Inertia::render('Orders/Index', [
             'orders' => $orders,
-            'filters' => $request->only(['search', 'status', 'date_start', 'date_end']),
+            'filters' => [
+                'search' => $request->search,
+                'status' => $request->status,
+                'date_start' => $startDate,
+                'date_end' => $endDate,
+            ],
             'contacts' => $contacts,
             'items' => $items,
             'accounts' => $accounts,

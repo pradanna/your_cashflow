@@ -83,6 +83,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/stock-mutations', [ReportController::class, 'stockMutations'])->name('stock-mutations');
         Route::get('/statements/pdf', [ReportController::class, 'customerStatementPdf'])->name('statements.pdf');
         Route::get('/debt-summary', [ReportController::class, 'debtSummary'])->name('debt-summary');
+        Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
     });
 });
 
