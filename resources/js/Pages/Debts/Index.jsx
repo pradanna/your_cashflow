@@ -105,6 +105,7 @@ export default function DebtIndex({
         type: activeTab,
         amount: "",
         due_date: "",
+        note: "",
     });
 
     // Form khusus Payment
@@ -160,7 +161,17 @@ export default function DebtIndex({
         setEditingDebt(null);
         reset();
         clearErrors();
-        setData("type", activeTab);
+
+        // Default jatuh tempo 1 minggu dari sekarang
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const defaultDueDate = nextWeek.toISOString().split("T")[0];
+
+        setData((data) => ({
+            ...data,
+            type: activeTab,
+            due_date: defaultDueDate,
+        }));
         setCreateOpen(true);
     };
 
@@ -209,6 +220,7 @@ export default function DebtIndex({
             type: debt.type,
             amount: debt.amount,
             due_date: debt.due_date || "",
+            note: debt.note || "",
         });
         clearErrors();
         setEditOpen(true);
@@ -411,6 +423,11 @@ export default function DebtIndex({
                                                 {debt.order
                                                     ? `Jual: ${debt.order.invoice_number}`
                                                     : ""}
+                                                {debt.note && (
+                                                    <div className="text-xs text-gray-400 italic mt-0.5">
+                                                        "{debt.note}"
+                                                    </div>
+                                                )}
                                                 {!debt.purchase &&
                                                     !debt.order &&
                                                     "-"}
@@ -579,6 +596,26 @@ export default function DebtIndex({
                             />
                             <InputError
                                 message={errors.due_date}
+                                className="mt-2"
+                            />
+                        </div>
+
+                        <div>
+                            <InputLabel
+                                htmlFor="note"
+                                value="Keterangan / Catatan (Opsional)"
+                            />
+                            <TextInput
+                                id="note"
+                                className="mt-1 block w-full"
+                                value={data.note}
+                                onChange={(e) =>
+                                    setData("note", e.target.value)
+                                }
+                                placeholder="Contoh: Hutang operasional, Pinjaman sementara"
+                            />
+                            <InputError
+                                message={errors.note}
                                 className="mt-2"
                             />
                         </div>

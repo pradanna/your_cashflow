@@ -84,6 +84,7 @@ class DebtController extends Controller
             'type' => 'required|in:PAYABLE,RECEIVABLE',
             'amount' => 'required|numeric|min:0.01',
             'due_date' => 'nullable|date',
+            'note' => 'nullable|string|max:255',
         ]);
 
         $request->user()->debts()->create([
@@ -93,6 +94,7 @@ class DebtController extends Controller
             'remaining' => $validated['amount'], // Awalnya, sisa = jumlah total
             'due_date' => $validated['due_date'],
             'status' => 'UNPAID',
+            'note' => $validated['note'] ?? null,
         ]);
 
         $message = $validated['type'] === 'PAYABLE' ? 'Hutang berhasil ditambahkan.' : 'Piutang berhasil ditambahkan.';
@@ -110,6 +112,7 @@ class DebtController extends Controller
             'contact_id' => 'required|exists:contacts,id',
             'amount' => 'required|numeric|min:0.01',
             'due_date' => 'nullable|date',
+            'note' => 'nullable|string|max:255',
         ]);
 
         // Hanya izinkan edit jumlah jika status masih UNPAID untuk simplifikasi
@@ -122,6 +125,7 @@ class DebtController extends Controller
             'amount' => $validated['amount'],
             'remaining' => $validated['amount'], // Reset remaining karena asumsi UNPAID
             'due_date' => $validated['due_date'],
+            'note' => $validated['note'] ?? null,
         ]);
 
         return redirect()->back()->with('success', 'Data hutang berhasil diperbarui.');

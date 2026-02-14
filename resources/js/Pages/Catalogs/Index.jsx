@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm, router, Link } from "@inertiajs/react";
-import { Plus, Search, Package, ShoppingBag, X, Pencil } from "lucide-react";
+import {
+    Plus,
+    Search,
+    Package,
+    ShoppingBag,
+    X,
+    Pencil,
+    Trash2,
+} from "lucide-react";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
+import DangerButton from "@/Components/DangerButton";
 import Modal from "@/Components/Modal";
 import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
@@ -19,6 +28,9 @@ export default function CatalogIndex({
 }) {
     const [activeTab, setActiveTab] = useState(filters.tab || "items");
     const [isModalOpen, setModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
 
     // State untuk filter
     const [search, setSearch] = useState(filters.search || "");
@@ -27,7 +39,17 @@ export default function CatalogIndex({
     );
 
     // Form Handling (Inertia useForm)
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const {
+        data,
+        setData,
+        post,
+        put,
+        delete: destroy,
+        processing,
+        errors,
+        reset,
+        clearErrors,
+    } = useForm({
         name: "",
         price: "",
         unit: "",
@@ -86,16 +108,44 @@ export default function CatalogIndex({
             preserveScroll: true,
         };
 
-        if (activeTab === "items") {
-            post(route("items.store_custom"), options);
+        if (isEditMode && selectedItem) {
+            if (activeTab === "items") {
+                put(route("items.update", selectedItem.id), options);
+            } else {
+                put(route("supplier-items.update", selectedItem.id), options);
+            }
         } else {
-            post(route("supplier-items.store_custom"), options);
+            if (activeTab === "items") {
+                post(route("items.store_custom"), options);
+            } else {
+                post(route("supplier-items.store_custom"), options);
+            }
+        }
+    };
+
+    // Handle Delete
+    const handleDelete = () => {
+        const options = {
+            onSuccess: () => {
+                setDeleteModalOpen(false);
+                setSelectedItem(null);
+            },
+            preserveScroll: true,
+        };
+
+        if (activeTab === "items") {
+            destroy(route("items.destroy", selectedItem.id), options);
+        } else {
+            destroy(route("supplier-items.destroy", selectedItem.id), options);
         }
     };
 
     // --- MODAL & FORM HANDLERS ---
     const openModal = () => {
+        setIsEditMode(false);
+        setSelectedItem(null);
         reset();
+        clearErrors();
         // Pre-fill supplier if only one exists for convenience
         if (activeTab === "supplier_items" && suppliers.length === 1) {
             setData("supplier_id", suppliers[0].id);
@@ -103,8 +153,23 @@ export default function CatalogIndex({
         setModalOpen(true);
     };
 
+    const openEditModal = (item) => {
+        setIsEditMode(true);
+        setSelectedItem(item);
+        clearErrors();
+        setData({
+            name: item.name,
+            price: item.price,
+            unit: item.unit,
+            is_stock_active: item.is_stock_active ?? true,
+            supplier_id: item.contact_id || item.supplier_id || "", // Adjust based on model
+        });
+        setModalOpen(true);
+    };
+
     const closeModal = () => {
         setModalOpen(false);
+        setSelectedItem(null);
     };
 
     // --- UI HELPERS ---
@@ -177,10 +242,21 @@ export default function CatalogIndex({
                 <td className="px-6 py-4 text-center">
                     <div className="flex justify-center gap-1">
                         <button
+                            onClick={() => openEditModal(item)}
                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                             title="Edit"
                         >
                             <Pencil size={16} />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setSelectedItem(item);
+                                setDeleteModalOpen(true);
+                            }}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            title="Hapus"
+                        >
+                            <Trash2 size={16} />
                         </button>
                     </div>
                 </td>
@@ -353,7 +429,7 @@ export default function CatalogIndex({
                 <form onSubmit={handleSubmit} className="p-6">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-bold text-gray-900">
-                            Tambah{" "}
+                            {isEditMode ? "Edit" : "Tambah"}{" "}
                             {activeTab === "items"
                                 ? "Item Penjualan"
                                 : "Item Supplier"}
@@ -538,10 +614,40 @@ export default function CatalogIndex({
                             className="bg-red-600 hover:bg-red-700"
                             disabled={processing}
                         >
-                            Simpan
+                            {isEditMode ? "Simpan Perubahan" : "Simpan"}
                         </PrimaryButton>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Modal Delete */}
+            <Modal
+                show={isDeleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+            >
+                <div className="p-6">
+                    <h2 className="text-lg font-bold text-red-600 mb-4">
+                        Hapus Item?
+                    </h2>
+                    <p className="text-gray-600 mb-6">
+                        Anda yakin ingin menghapus item{" "}
+                        <strong>{selectedItem?.name}</strong>? Tindakan ini
+                        tidak dapat dibatalkan.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <SecondaryButton
+                            onClick={() => setDeleteModalOpen(false)}
+                        >
+                            Batal
+                        </SecondaryButton>
+                        <DangerButton
+                            onClick={handleDelete}
+                            disabled={processing}
+                        >
+                            {processing ? "Menghapus..." : "Hapus Permanen"}
+                        </DangerButton>
+                    </div>
+                </div>
             </Modal>
         </AuthenticatedLayout>
     );

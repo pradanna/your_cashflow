@@ -100,4 +100,58 @@ class CatalogController extends Controller
 
         return redirect()->back()->with('success', 'Item supplier berhasil ditambahkan.');
     }
+
+    /**
+     * Update Item Penjualan.
+     */
+    public function updateItem(Request $request, Item $item)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'unit' => 'required|string|max:50',
+            'is_stock_active' => 'required|boolean',
+        ]);
+
+        $item->update($validated);
+
+        return redirect()->back()->with('success', 'Item penjualan berhasil diperbarui.');
+    }
+
+    /**
+     * Hapus Item Penjualan.
+     */
+    public function destroyItem(Item $item)
+    {
+        $item->delete();
+        return redirect()->back()->with('success', 'Item penjualan berhasil dihapus.');
+    }
+
+    /**
+     * Update Item Supplier.
+     */
+    public function updateSupplierItem(Request $request, SupplierItem $supplierItem)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'supplier_id' => 'required|exists:contacts,id',
+            'price' => 'required|numeric|min:0',
+            'unit' => 'required|string|max:50',
+        ]);
+
+        $supplierItem->update([
+            'name' => $validated['name'],
+            'contact_id' => $validated['supplier_id'],
+            'price' => $validated['price'],
+            'unit' => $validated['unit'],
+        ]);
+
+        return redirect()->back()->with('success', 'Item supplier berhasil diperbarui.');
+    }
+
+    public function destroySupplierItem(SupplierItem $supplierItem)
+    {
+        $supplierItem->delete();
+        return redirect()->back()->with('success', 'Item supplier berhasil dihapus.');
+    }
 }
