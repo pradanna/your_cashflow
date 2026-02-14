@@ -23,7 +23,6 @@ import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import DangerButton from "@/Components/DangerButton";
-import Select from "react-select";
 
 export default function ExpenseIndex({
     auth,
