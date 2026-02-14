@@ -10,8 +10,6 @@ use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\Stock;
-use App\Models\SupplierItem;
 use Inertia\Inertia;
 
 class TransactionController extends Controller
@@ -61,8 +59,6 @@ class TransactionController extends Controller
         $categories = Category::where('user_id', $user->id)->where('type', 'INCOME')->orderBy('name')->get();
         $contacts = Contact::where('user_id', $user->id)->whereIn('type', ['CUSTOMER', 'BOTH'])->orderBy('name')->get();
         $suppliers = Contact::where('user_id', $user->id)->whereIn('type', ['SUPPLIER', 'BOTH'])->orderBy('name')->get();
-        $stocks = Stock::where('user_id', $user->id)->orderBy('name')->get();
-        $supplierItems = SupplierItem::where('user_id', $user->id)->orderBy('name')->get();
 
         return Inertia::render('Transactions/Income', [
             'transactions' => $transactions,
@@ -71,8 +67,6 @@ class TransactionController extends Controller
             'categories' => $categories,
             'contacts' => $contacts,
             'suppliers' => $suppliers,
-            'supplierItems' => $supplierItems,
-            'stocks' => $stocks,
             'filters' => [
                 'date_start' => $startDate,
                 'date_end' => $endDate,

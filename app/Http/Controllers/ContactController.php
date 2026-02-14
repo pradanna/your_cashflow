@@ -28,7 +28,7 @@ class ContactController extends Controller
 
         // Sorting & Pagination
         $contacts = $query->orderBy('name', 'asc')
-            ->paginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         return Inertia::render('Contacts/Index', [

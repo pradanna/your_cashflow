@@ -302,6 +302,7 @@ export default function ContactIndex({ auth, contacts, filters }) {
                                         <Link
                                             key={i}
                                             href={link.url || "#"}
+                                            preserveScroll
                                             className={`px-3 py-1 rounded-lg text-sm ${link.active ? "bg-red-600 text-white" : "text-gray-600 hover:bg-gray-100"} ${!link.url && "opacity-50 cursor-not-allowed"}`}
                                             dangerouslySetInnerHTML={{
                                                 __html: link.label,
