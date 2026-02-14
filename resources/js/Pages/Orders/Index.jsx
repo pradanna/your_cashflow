@@ -25,7 +25,7 @@ import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
 import DangerButton from "@/Components/DangerButton";
-
+import Select from "react-select";
 export default function OrderIndex({
     orders,
     filters,
@@ -312,6 +312,11 @@ export default function OrderIndex({
         (sum, item) => sum + item.price * item.qty,
         0,
     );
+
+    const contactOptions = contacts.map((contact) => ({
+        value: contact.id,
+        label: contact.name,
+    }));
 
     return (
         <AuthenticatedLayout>
@@ -654,25 +659,30 @@ export default function OrderIndex({
 
                             <div>
                                 <InputLabel value="Pelanggan" />
-                                <select
-                                    className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                    value={data.contact_id}
-                                    onChange={(e) =>
-                                        setData("contact_id", e.target.value)
+                                <Select
+                                    className="mt-1"
+                                    classNamePrefix="react-select" // Berguna untuk styling custom
+                                    options={contactOptions}
+                                    // Cari objek yang value-nya sama dengan data.contact_id agar label tetap muncul
+                                    value={contactOptions.find(
+                                        (opt) => opt.value === data.contact_id,
+                                    )}
+                                    onChange={(selectedOption) =>
+                                        setData(
+                                            "contact_id",
+                                            selectedOption
+                                                ? selectedOption.value
+                                                : "",
+                                        )
                                     }
-                                >
-                                    <option value="">
-                                        -- Pilih Pelanggan --
-                                    </option>
-                                    {contacts.map((contact) => (
-                                        <option
-                                            key={contact.id}
-                                            value={contact.id}
-                                        >
-                                            {contact.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                    placeholder="-- Pilih Pelanggan --"
+                                    isClearable // Agar bisa dikosongkan (tombol X)
+                                    isSearchable // Fitur pencarian otomatis
+                                />
+                                <InputError
+                                    message={errors.contact_id}
+                                    className="mt-2"
+                                />
                                 <InputError
                                     message={errors.contact_id}
                                     className="mt-2"

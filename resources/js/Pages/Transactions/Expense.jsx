@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import Select from "react-select";
 import { Head, useForm, router } from "@inertiajs/react";
 import {
     TrendingUp,
@@ -62,6 +63,45 @@ export default function ExpenseIndex({
         description: "",
         type: "EXPENSE",
     });
+
+    // --- OPTIONS & STYLES ---
+    const accountOptions = accounts.map((acc) => ({
+        value: acc.id,
+        label: acc.name,
+    }));
+    const categoryOptions = categories.map((cat) => ({
+        value: cat.id,
+        label: cat.name,
+    }));
+    const contactOptions = contacts.map((c) => ({
+        value: c.id,
+        label: c.name,
+    }));
+
+    const filterSelectStyles = {
+        control: (base, state) => ({
+            ...base,
+            borderRadius: "0.75rem", // rounded-xl
+            borderColor: state.isFocused ? "#ef4444" : "#e5e7eb", // red-500 : gray-200
+            boxShadow: state.isFocused ? "0 0 0 1px #ef4444" : "none",
+            "&:hover": { borderColor: "#ef4444" },
+            minHeight: "42px",
+        }),
+        menu: (base) => ({ ...base, zIndex: 50 }),
+    };
+
+    const modalSelectStyles = {
+        control: (base, state) => ({
+            ...base,
+            borderRadius: "0.375rem", // rounded-md
+            borderColor: state.isFocused ? "#ef4444" : "#d1d5db", // red-500 : gray-300
+            boxShadow: state.isFocused
+                ? "0 0 0 1px #ef4444"
+                : "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+            "&:hover": { borderColor: "#ef4444" },
+        }),
+        menu: (base) => ({ ...base, zIndex: 50 }),
+    };
 
     // --- HANDLERS: FILTER ---
     const isFirstRender = React.useRef(true);
@@ -216,32 +256,42 @@ export default function ExpenseIndex({
                             </div>
 
                             {/* Account Filter */}
-                            <select
-                                className="px-4 py-2 rounded-xl border-gray-200 focus:border-red-500 focus:ring-red-500 text-sm bg-white shadow-sm"
-                                value={accountId}
-                                onChange={(e) => setAccountId(e.target.value)}
-                            >
-                                <option value="">Semua Akun</option>
-                                {accounts.map((acc) => (
-                                    <option key={acc.id} value={acc.id}>
-                                        {acc.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="w-48">
+                                <Select
+                                    options={accountOptions}
+                                    value={
+                                        accountOptions.find(
+                                            (opt) => opt.value == accountId,
+                                        ) || null
+                                    }
+                                    onChange={(opt) =>
+                                        setAccountId(opt ? opt.value : "")
+                                    }
+                                    placeholder="Semua Akun"
+                                    isClearable
+                                    styles={filterSelectStyles}
+                                    className="text-sm"
+                                />
+                            </div>
 
                             {/* Customer Filter */}
-                            <select
-                                className="px-4 py-2 rounded-xl border-gray-200 focus:border-red-500 focus:ring-red-500 text-sm bg-white shadow-sm"
-                                value={contactId}
-                                onChange={(e) => setContactId(e.target.value)}
-                            >
-                                <option value="">Semua Supplier</option>
-                                {contacts.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="w-48">
+                                <Select
+                                    options={contactOptions}
+                                    value={
+                                        contactOptions.find(
+                                            (opt) => opt.value == contactId,
+                                        ) || null
+                                    }
+                                    onChange={(opt) =>
+                                        setContactId(opt ? opt.value : "")
+                                    }
+                                    placeholder="Semua Supplier"
+                                    isClearable
+                                    styles={filterSelectStyles}
+                                    className="text-sm"
+                                />
+                            </div>
                         </div>
 
                         <PrimaryButton
@@ -425,21 +475,20 @@ export default function ExpenseIndex({
 
                         <div>
                             <InputLabel value="Masuk ke Akun" />
-                            <select
-                                className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                value={data.account_id}
-                                onChange={(e) =>
-                                    setData("account_id", e.target.value)
+                            <Select
+                                options={accountOptions}
+                                value={
+                                    accountOptions.find(
+                                        (opt) => opt.value == data.account_id,
+                                    ) || null
                                 }
-                                required
-                            >
-                                <option value="">-- Pilih Akun --</option>
-                                {accounts.map((acc) => (
-                                    <option key={acc.id} value={acc.id}>
-                                        {acc.name}
-                                    </option>
-                                ))}
-                            </select>
+                                onChange={(opt) =>
+                                    setData("account_id", opt ? opt.value : "")
+                                }
+                                placeholder="-- Pilih Akun --"
+                                styles={modalSelectStyles}
+                                className="mt-1"
+                            />
                             <InputError
                                 message={errors.account_id}
                                 className="mt-1"
@@ -448,21 +497,20 @@ export default function ExpenseIndex({
 
                         <div>
                             <InputLabel value="Kategori" />
-                            <select
-                                className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                value={data.category_id}
-                                onChange={(e) =>
-                                    setData("category_id", e.target.value)
+                            <Select
+                                options={categoryOptions}
+                                value={
+                                    categoryOptions.find(
+                                        (opt) => opt.value == data.category_id,
+                                    ) || null
                                 }
-                                required
-                            >
-                                <option value="">-- Pilih Kategori --</option>
-                                {categories.map((cat) => (
-                                    <option key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                    </option>
-                                ))}
-                            </select>
+                                onChange={(opt) =>
+                                    setData("category_id", opt ? opt.value : "")
+                                }
+                                placeholder="-- Pilih Kategori --"
+                                styles={modalSelectStyles}
+                                className="mt-1"
+                            />
                             <InputError
                                 message={errors.category_id}
                                 className="mt-1"

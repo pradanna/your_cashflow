@@ -260,7 +260,7 @@ export default function IncomeIndex({
 
                             {/* Customer Filter */}
                             <div className="w-48">
-                                <Select
+                                <Search
                                     options={contactOptions}
                                     value={
                                         contactOptions.find(
