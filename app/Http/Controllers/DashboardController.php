@@ -41,7 +41,7 @@ class DashboardController extends Controller
         $netCashPosition = ($totalLiquid + $totalReceivable) - $totalPayable;
 
         // Kekayaan Global = Real (Akun) + Estimasi (Piutang) + Stock
-        $globalWealth = $totalLiquid + $totalReceivable + $totalStockValue;
+        $globalWealth = $totalLiquid + $totalReceivable + $totalStockValue - $totalPayable;
 
         return Inertia::render('Dashboard', [
             'stats' => [
