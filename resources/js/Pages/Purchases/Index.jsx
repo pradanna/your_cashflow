@@ -558,17 +558,18 @@ export default function PurchaseIndex({
                                     value={
                                         contactOptions.find(
                                             (opt) =>
-                                                opt.value === data.contact_id,
+                                                opt.value == data.contact_id,
                                         ) || null
                                     }
-                                    onChange={(selectedOption) =>
+                                    onChange={(selectedOption) => {
+                                        // Pastikan menyimpan nilainya saja, bukan objeknya
                                         setData(
                                             "contact_id",
                                             selectedOption
                                                 ? selectedOption.value
                                                 : "",
-                                        )
-                                    }
+                                        );
+                                    }}
                                     placeholder="-- Pilih Supplier --"
                                     isClearable // Agar bisa dikosongkan (tombol X)
                                     isSearchable // Fitur pencarian otomatis
