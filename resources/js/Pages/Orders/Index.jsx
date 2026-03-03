@@ -116,8 +116,17 @@ export default function OrderIndex({
         qty: 1,
     });
 
+    const isInitialMount = React.useRef(true);
+
     // Debounce search / auto-submit filter
     useEffect(() => {
+        // Mencegah effect berjalan pada saat mount pertama kali.
+        // Ini akan menghentikan reset pagination saat berpindah halaman.
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+
         const timer = setTimeout(() => {
             router.get(
                 route("orders.index"),
@@ -309,6 +318,7 @@ export default function OrderIndex({
         e.preventDefault();
         purchaseForm.post(route("purchases.store"), {
             onSuccess: () => setPurchaseOpen(false),
+            preserveScroll: true,
         });
     };
 
@@ -455,7 +465,14 @@ export default function OrderIndex({
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 font-medium text-gray-900">
-                                                    {order.invoice_number}
+                                                    <div>
+                                                        {order.invoice_number}
+                                                    </div>
+                                                    {order.note && (
+                                                        <div className="text-xs text-gray-400 font-normal italic mt-0.5">
+                                                            {order.note}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-600">
                                                     {order.contact ? (

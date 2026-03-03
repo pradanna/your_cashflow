@@ -22,9 +22,7 @@ class CategoryController extends Controller
             $query->where('type', $request->type);
         }
 
-        $categories = $query->latest()
-            ->paginate(10)
-            ->withQueryString();
+        $categories = $query->latest()->get();
 
         return Inertia::render('Categories/Index', [
             'categories' => $categories,

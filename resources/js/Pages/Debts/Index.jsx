@@ -79,11 +79,16 @@ export default function DebtIndex({
     const [dateEnd, setDateEnd] = useState(filters.date_end || "");
     const [sortBy, setSortBy] = useState(filters.sort_by || "created_at");
     const [sortDir, setSortDir] = useState(filters.sort_dir || "desc");
+    const [status, setStatus] = useState(filters.status || "ALL");
+    const [show, setShow] = useState(filters.show || "paginate");
 
     const [isCreateOpen, setCreateOpen] = useState(false);
     const [isEditOpen, setEditOpen] = useState(false);
     const [isDeleteOpen, setDeleteOpen] = useState(false);
     const [isPaymentOpen, setPaymentOpen] = useState(false);
+    const [isBulkPaymentOpen, setBulkPaymentOpen] = useState(false);
+
+    const [selectedDebts, setSelectedDebts] = useState([]);
 
     const [editingDebt, setEditingDebt] = useState(null);
     const [deletingDebt, setDeletingDebt] = useState(null);
@@ -117,6 +122,14 @@ export default function DebtIndex({
         note: "",
     });
 
+    // Form khusus Bulk Payment
+    const bulkPaymentForm = useForm({
+        account_id: "",
+        category_id: "",
+        transaction_date: new Date().toISOString().split("T")[0],
+        debt_ids: [],
+    });
+
     const formatDate = (dateString) =>
         new Date(dateString).toLocaleDateString("id-ID", {
             day: "numeric",
@@ -124,8 +137,35 @@ export default function DebtIndex({
             year: "numeric",
         });
 
+    // Hitung total dari item yang dipilih
+    const selectedTotal = selectedDebts.reduce((total, id) => {
+        const debt = debts.data.find((d) => d.id === id);
+        return total + (debt ? parseFloat(debt.remaining) : 0);
+    }, 0);
+
+    // Filter kategori sesuai tipe hutang/piutang
+    const paymentCategories = categories.filter((cat) =>
+        activeTab === "PAYABLE"
+            ? cat.type === "EXPENSE"
+            : cat.type === "INCOME",
+    );
+
+    // Hitung jumlah item yang belum lunas di halaman ini
+    const unPaidDebtsCount = debts.data.filter(
+        (d) => d.status !== "PAID",
+    ).length;
+
+    const checkboxRef = React.useRef();
+    const isInitialMount = React.useRef(true);
+
     // Effect untuk menangani filter
     useEffect(() => {
+        // Mencegah effect berjalan pada saat mount pertama kali.
+        // Ini akan menghentikan reset pagination saat berpindah halaman.
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
         const params = {
             type: activeTab,
             search,
@@ -133,6 +173,8 @@ export default function DebtIndex({
             date_end: dateEnd,
             sort_by: sortBy,
             sort_dir: sortDir,
+            status: status,
+            show: show,
         };
         const timer = setTimeout(() => {
             router.get(route("debts.index"), params, {
@@ -141,8 +183,23 @@ export default function DebtIndex({
                 replace: true,
             });
         }, 300);
+
+        // Reset selection ketika filter berubah
+        setSelectedDebts([]);
+
         return () => clearTimeout(timer);
-    }, [activeTab, search, dateStart, dateEnd, sortBy, sortDir]);
+    }, [activeTab, search, dateStart, dateEnd, sortBy, sortDir, status, show]);
+
+    useEffect(() => {
+        if (checkboxRef.current) {
+            checkboxRef.current.checked =
+                unPaidDebtsCount > 0 &&
+                selectedDebts.length === unPaidDebtsCount;
+            checkboxRef.current.indeterminate =
+                selectedDebts.length > 0 &&
+                selectedDebts.length < unPaidDebtsCount;
+        }
+    }, [selectedDebts, unPaidDebtsCount]);
 
     useEffect(() => {
         setData("type", activeTab);
@@ -154,6 +211,25 @@ export default function DebtIndex({
         } else {
             setSortBy(column);
             setSortDir("asc");
+        }
+    };
+
+    const handleSelect = (debtId) => {
+        setSelectedDebts((prev) =>
+            prev.includes(debtId)
+                ? prev.filter((id) => id !== debtId)
+                : [...prev, debtId],
+        );
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            const allVisibleIds = debts.data
+                .filter((d) => d.status !== "PAID")
+                .map((d) => d.id);
+            setSelectedDebts(allVisibleIds);
+        } else {
+            setSelectedDebts([]);
         }
     };
 
@@ -289,6 +365,28 @@ export default function DebtIndex({
         });
     };
 
+    const openBulkPaymentModal = () => {
+        bulkPaymentForm.setData({
+            account_id: "",
+            category_id: "",
+            transaction_date: new Date().toISOString().split("T")[0],
+            debt_ids: selectedDebts,
+        });
+        bulkPaymentForm.clearErrors();
+        setBulkPaymentOpen(true);
+    };
+
+    const handleBulkPaymentSubmit = (e) => {
+        e.preventDefault();
+        bulkPaymentForm.post(route("debts.bulk-payment"), {
+            onSuccess: () => {
+                setBulkPaymentOpen(false);
+                setSelectedDebts([]);
+            },
+            preserveScroll: true,
+        });
+    };
+
     const TabButton = ({ tabName, label }) => (
         <button
             onClick={() => setActiveTab(tabName)}
@@ -344,7 +442,7 @@ export default function DebtIndex({
                         </PrimaryButton>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="relative">
                             <Search
                                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -374,12 +472,44 @@ export default function DebtIndex({
                                 onChange={(e) => setDateEnd(e.target.value)}
                             />
                         </div>
+                        <div>
+                            <select
+                                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-red-500 focus:border-red-500"
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                            >
+                                <option value="ALL">Semua Status</option>
+                                <option value="PAID">Lunas</option>
+                                <option value="UNPAID">Belum Lunas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select
+                                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-red-500 focus:border-red-500"
+                                value={show}
+                                onChange={(e) => setShow(e.target.value)}
+                            >
+                                <option value="paginate">
+                                    Gunakan Pagination
+                                </option>
+                                <option value="all">Tampilkan Semua</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-gray-50 border-b text-gray-500 font-medium">
                                 <tr>
+                                    <th className="px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            ref={checkboxRef}
+                                            className="rounded border-gray-300 text-red-600 shadow-sm focus:ring-red-500"
+                                            onChange={handleSelectAll}
+                                            disabled={unPaidDebtsCount === 0}
+                                        />
+                                    </th>
                                     <SortableHeader
                                         column="contact_name"
                                         label={
@@ -389,9 +519,10 @@ export default function DebtIndex({
                                         }
                                     />
                                     <th className="px-6 py-3">Referensi</th>
-                                    <th className="px-6 py-3">
-                                        Tgl Jatuh Tempo
-                                    </th>
+                                    <SortableHeader
+                                        column="created_at"
+                                        label="Tanggal"
+                                    />
                                     <SortableHeader
                                         column="amount"
                                         label="Total"
@@ -413,6 +544,22 @@ export default function DebtIndex({
                                             key={debt.id}
                                             className="hover:bg-gray-50"
                                         >
+                                            <td className="px-4 py-4">
+                                                {debt.status !== "PAID" && (
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded border-gray-300 text-red-600 shadow-sm focus:ring-red-500"
+                                                        checked={selectedDebts.includes(
+                                                            debt.id,
+                                                        )}
+                                                        onChange={() =>
+                                                            handleSelect(
+                                                                debt.id,
+                                                            )
+                                                        }
+                                                    />
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 font-medium text-gray-900">
                                                 {debt.contact?.name || "N/A"}
                                             </td>
@@ -430,12 +577,23 @@ export default function DebtIndex({
                                                 )}
                                                 {!debt.purchase &&
                                                     !debt.order &&
-                                                    "-"}
+                                                    "Manual"}
                                             </td>
-                                            <td className="px-6 py-4 text-gray-500">
-                                                {debt.due_date
-                                                    ? formatDate(debt.due_date)
-                                                    : "-"}
+                                            <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
+                                                {debt.order?.transaction_date
+                                                    ? formatDate(
+                                                          debt.order
+                                                              .transaction_date,
+                                                      )
+                                                    : debt.purchase
+                                                            ?.transaction_date
+                                                      ? formatDate(
+                                                            debt.purchase
+                                                                .transaction_date,
+                                                        )
+                                                      : formatDate(
+                                                            debt.created_at,
+                                                        )}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600">
                                                 {formatRupiah(debt.amount)}
@@ -490,7 +648,7 @@ export default function DebtIndex({
                                 ) : (
                                     <tr>
                                         <td
-                                            colSpan="6"
+                                            colSpan="8"
                                             className="px-6 py-12 text-center text-gray-400"
                                         >
                                             Tidak ada data{" "}
@@ -504,8 +662,34 @@ export default function DebtIndex({
                             </tbody>
                         </table>
                     </div>
-                    {debts.data.length > 0 && (
+                    {show === "paginate" && debts.data.length > 0 && (
                         <Pagination links={debts.links} />
+                    )}
+
+                    {selectedDebts.length > 0 && (
+                        <div className="fixed bottom-0 left-0 right-0 lg:left-64 bg-white/90 backdrop-blur-sm border-t border-gray-200 shadow-lg z-20">
+                            <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                                <div className="flex items-center justify-between h-20 px-4">
+                                    <div>
+                                        <span className="font-semibold">
+                                            {selectedDebts.length} item terpilih
+                                        </span>
+                                        <span className="text-gray-500 mx-2">
+                                            |
+                                        </span>
+                                        Total Tagihan:{" "}
+                                        <span className="font-bold text-red-600">
+                                            {formatRupiah(selectedTotal)}
+                                        </span>
+                                    </div>
+                                    <PrimaryButton
+                                        onClick={openBulkPaymentModal}
+                                    >
+                                        Bayar Sekaligus
+                                    </PrimaryButton>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
@@ -756,7 +940,7 @@ export default function DebtIndex({
                                 required
                             >
                                 <option value="">-- Pilih Kategori --</option>
-                                {categories?.map((cat) => (
+                                {paymentCategories.map((cat) => (
                                     <option key={cat.id} value={cat.id}>
                                         {cat.name}
                                     </option>
@@ -826,6 +1010,127 @@ export default function DebtIndex({
                             className="bg-green-600 hover:bg-green-700"
                         >
                             Bayar
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* MODAL BULK PAYMENT */}
+            <Modal
+                show={isBulkPaymentOpen}
+                onClose={() => setBulkPaymentOpen(false)}
+            >
+                <form onSubmit={handleBulkPaymentSubmit} className="p-6">
+                    <h2 className="text-lg font-bold text-gray-900">
+                        Bayar {selectedDebts.length} Tagihan Sekaligus
+                    </h2>
+
+                    <div className="mt-4 mb-4 p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-500 text-sm">
+                                Total Pembayaran:
+                            </span>
+                            <span className="font-bold text-red-600 text-lg">
+                                {formatRupiah(selectedTotal)}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <InputLabel value="Tanggal Pembayaran" />
+                            <TextInput
+                                type="date"
+                                className="w-full mt-1"
+                                value={bulkPaymentForm.data.transaction_date}
+                                onChange={(e) =>
+                                    bulkPaymentForm.setData(
+                                        "transaction_date",
+                                        e.target.value,
+                                    )
+                                }
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <InputLabel value="Sumber Dana (Akun)" />
+                            <select
+                                className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
+                                value={bulkPaymentForm.data.account_id}
+                                onChange={(e) =>
+                                    bulkPaymentForm.setData(
+                                        "account_id",
+                                        e.target.value,
+                                    )
+                                }
+                                required
+                            >
+                                <option value="">-- Pilih Akun --</option>
+                                {accounts?.map((acc) => (
+                                    <option key={acc.id} value={acc.id}>
+                                        {acc.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError
+                                message={bulkPaymentForm.errors.account_id}
+                                className="mt-1"
+                            />
+                        </div>
+
+                        <div>
+                            <InputLabel value="Kategori (Pos Anggaran)" />
+                            <select
+                                className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
+                                value={bulkPaymentForm.data.category_id}
+                                onChange={(e) =>
+                                    bulkPaymentForm.setData(
+                                        "category_id",
+                                        e.target.value,
+                                    )
+                                }
+                                required
+                            >
+                                <option value="">-- Pilih Kategori --</option>
+                                {paymentCategories.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError
+                                message={bulkPaymentForm.errors.category_id}
+                                className="mt-1"
+                            />
+                        </div>
+
+                        <div>
+                            <InputLabel value="Jumlah Bayar" />
+                            <TextInput
+                                type="text"
+                                className="w-full mt-1 bg-gray-100 cursor-not-allowed"
+                                value={formatRupiah(selectedTotal)}
+                                readOnly
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Jumlah pembayaran penuh dan tidak dapat diubah.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3">
+                        <SecondaryButton
+                            type="button"
+                            onClick={() => setBulkPaymentOpen(false)}
+                        >
+                            Batal
+                        </SecondaryButton>
+                        <PrimaryButton
+                            disabled={bulkPaymentForm.processing}
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            Konfirmasi & Bayar
                         </PrimaryButton>
                     </div>
                 </form>

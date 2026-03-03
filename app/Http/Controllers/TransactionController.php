@@ -51,8 +51,7 @@ class TransactionController extends Controller
         // Pagination
         $transactions = $query->latest('transaction_date')
             ->latest('id')
-            ->paginate(10)
-            ->withQueryString();
+            ->get();
 
         // Data untuk Dropdown Filter & Modal
         $accounts = Account::where('user_id', $user->id)->orderBy('name')->get();
@@ -113,8 +112,7 @@ class TransactionController extends Controller
         // Pagination
         $transactions = $query->latest('transaction_date')
             ->latest('id')
-            ->paginate(10)
-            ->withQueryString();
+            ->get();
 
         // Data untuk Dropdown Filter & Modal
         $accounts = Account::where('user_id', $user->id)->orderBy('name')->get();

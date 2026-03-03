@@ -62,6 +62,8 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('purchases', PurchaseController::class);
     Route::post('/purchases/{purchase}/payment', [PurchaseController::class, 'payment'])->name('purchases.payment');
+    Route::post('/debts/bulk-payment', [DebtController::class, 'bulkPayment'])->name('debts.bulk-payment');
+
 
     Route::resource('debts', DebtController::class);
     Route::post('/debts/{debt}/payment', [DebtController::class, 'payment'])->name('debts.payment');

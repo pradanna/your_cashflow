@@ -10,12 +10,15 @@ use Inertia\Inertia;
 
 class AccountController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $user = $request->user();
+        $accountsQuery = Account::where('user_id', $user->id);
+
         return Inertia::render('Accounts/Index', [
-            'accounts' => Account::latest()->get(),
+            'accounts' => $accountsQuery->latest()->get(),
             // Hitung total saldo semua akun untuk ditampilkan di header
-            'totalBalance' => Account::sum('balance'),
+            'totalBalance' => (clone $accountsQuery)->sum('balance'),
         ]);
     }
 
@@ -52,6 +55,10 @@ class AccountController extends Controller
 
     public function update(Request $request, Account $account)
     {
+        if ($account->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
         ]);
@@ -61,8 +68,12 @@ class AccountController extends Controller
         return redirect()->back()->with('success', 'Nama akun diperbarui.');
     }
 
-    public function destroy(Account $account)
+    public function destroy(Request $request, Account $account)
     {
+        if ($account->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
         // Opsional: Cek apakah ada transaksi sebelum hapus?
         // Untuk sekarang kita pakai cascade delete di database, jadi aman.
         $account->delete();

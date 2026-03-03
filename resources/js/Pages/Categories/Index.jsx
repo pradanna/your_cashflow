@@ -185,8 +185,8 @@ export default function CategoryIndex({ auth, categories, filters }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {categories.data.length > 0 ? (
-                                    categories.data.map((category) => (
+                                {categories.length > 0 ? (
+                                    categories.map((category) => (
                                         <tr
                                             key={category.id}
                                             className="hover:bg-gray-50/50"
@@ -264,14 +264,6 @@ export default function CategoryIndex({ auth, categories, filters }) {
                             </tbody>
                         </table>
                     </div>
-
-                    {/* Pagination (Simple) */}
-                    {categories.links && categories.links.length > 3 && (
-                        <div className="flex justify-center mt-4">
-                            {/* Implementasi pagination component jika diperlukan,
-                                atau gunakan simple prev/next button logic */}
-                        </div>
-                    )}
                 </div>
             </div>
 

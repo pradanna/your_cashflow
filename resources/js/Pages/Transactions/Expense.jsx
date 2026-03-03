@@ -101,6 +101,7 @@ export default function ExpenseIndex({
             "&:hover": { borderColor: "#ef4444" },
         }),
         menu: (base) => ({ ...base, zIndex: 50 }),
+        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
     };
 
     // --- HANDLERS: FILTER ---
@@ -321,8 +322,8 @@ export default function ExpenseIndex({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {transactions.data.length > 0 ? (
-                                    transactions.data.map((trx) => (
+                                {transactions.length > 0 ? (
+                                    transactions.map((trx) => (
                                         <tr
                                             key={trx.id}
                                             className="hover:bg-gray-50/50 transition-colors"
@@ -403,11 +404,6 @@ export default function ExpenseIndex({
                     </div>
 
                     {/* Pagination */}
-                    {transactions.links && transactions.links.length > 3 && (
-                        <div className="flex justify-center">
-                            {/* Simple Pagination Links rendering if needed */}
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -474,7 +470,7 @@ export default function ExpenseIndex({
                         </div>
 
                         <div>
-                            <InputLabel value="Masuk ke Akun" />
+                            <InputLabel value="Dari Akun" />
                             <Select
                                 options={accountOptions}
                                 value={
@@ -488,6 +484,7 @@ export default function ExpenseIndex({
                                 placeholder="-- Pilih Akun --"
                                 styles={modalSelectStyles}
                                 className="mt-1"
+                                menuPortalTarget={document.body}
                             />
                             <InputError
                                 message={errors.account_id}
@@ -510,6 +507,7 @@ export default function ExpenseIndex({
                                 placeholder="-- Pilih Kategori --"
                                 styles={modalSelectStyles}
                                 className="mt-1"
+                                menuPortalTarget={document.body}
                             />
                             <InputError
                                 message={errors.category_id}

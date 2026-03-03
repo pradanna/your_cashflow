@@ -206,7 +206,7 @@ class PurchaseController extends Controller
             }
         });
 
-        return redirect()->route('purchases.index')->with('success', 'Pembelian berhasil dibuat.');
+        return redirect()->back()->with('success', 'Pembelian berhasil dibuat.');
     }
 
     /**

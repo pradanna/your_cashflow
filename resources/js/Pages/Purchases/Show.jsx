@@ -9,6 +9,7 @@ import {
     FileText,
     ShoppingBag,
 } from "lucide-react";
+import { Button } from "@headlessui/react";
 
 export default function PurchaseShow({ auth, purchase }) {
     const formatRupiah = (number) => {
@@ -26,13 +27,13 @@ export default function PurchaseShow({ auth, purchase }) {
             <div className="max-w-4xl mx-auto space-y-6 py-6">
                 {/* Back Button & Actions */}
                 <div className="flex items-center justify-between">
-                    <Link
-                        href={route("purchases.index")}
+                    <Button
+                        onClick={() => window.history.back()}
                         className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors"
                     >
                         <ArrowLeft size={20} />
                         <span>Kembali ke Daftar</span>
-                    </Link>
+                    </Button>
                     <div className="flex gap-2">
                         <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm">
                             <Printer size={16} />

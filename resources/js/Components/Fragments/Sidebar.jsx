@@ -89,11 +89,11 @@ export default function Sidebar() {
                     href: "/reports/profit-loss",
                     icon: PieChart,
                 }, // Income & Outcome Summary
-                {
-                    label: "Riwayat Hutang",
-                    href: "/reports/debts",
-                    icon: FileText,
-                },
+                // {
+                //     label: "Riwayat Hutang",
+                //     href: "/reports/debts",
+                //     icon: FileText,
+                // },
                 {
                     label: "Ringkasan Hutang & Piutang",
                     href: "/reports/debt-summary",

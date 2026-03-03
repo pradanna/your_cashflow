@@ -23,6 +23,8 @@ class DebtController extends Controller
         $sortDir = $request->input('sort_dir', 'desc');
         $startDate = $request->input('date_start', now()->subMonth()->format('Y-m-d'));
         $endDate = $request->input('date_end', now()->format('Y-m-d'));
+        $status = $request->input('status', 'ALL');
+        $show = $request->input('show', 'paginate');
 
         $query = Debt::query()
             ->where('user_id', $user->id)
@@ -34,6 +36,17 @@ class DebtController extends Controller
             $query->whereHas('contact', function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%');
             });
+        }
+
+        // Filter: Status
+        if ($status !== 'ALL') {
+            if ($status === 'UNPAID') {
+                // "Belum Lunas" mencakup UNPAID dan PARTIAL
+                $query->whereIn('status', ['UNPAID', 'PARTIAL']);
+            } else {
+                // Untuk 'PAID'
+                $query->where('status', $status);
+            }
         }
 
         // Filter: Date Range (based on created_at)
@@ -49,7 +62,8 @@ class DebtController extends Controller
             $query->orderBy($sortBy, $sortDir);
         }
 
-        $debts = $query->paginate(15)->withQueryString();
+        $perPage = $show === 'all' ? 1000 : 15;
+        $debts = $query->paginate($perPage)->withQueryString();
 
         // Data untuk filter dan modal
         $contactType = ($type === 'PAYABLE') ? ['SUPPLIER', 'BOTH'] : ['CUSTOMER', 'BOTH'];
@@ -70,6 +84,8 @@ class DebtController extends Controller
                 'date_end' => $endDate,
                 'sort_by' => $sortBy,
                 'sort_dir' => $sortDir,
+                'status' => $status,
+                'show' => $show,
             ],
             'contacts' => $contacts,
             'accounts' => $accounts,
@@ -176,5 +192,61 @@ class DebtController extends Controller
         });
 
         return redirect()->back()->with('success', 'Pembayaran berhasil dicatat.');
+    }
+
+    public function bulkPayment(Request $request)
+    {
+        $validated = $request->validate([
+            'account_id' => 'required|exists:accounts,id',
+            'category_id' => 'required|exists:categories,id',
+            'transaction_date' => 'required|date',
+            'debt_ids' => 'required|array',
+            'debt_ids.*' => 'required|integer|exists:debts,id',
+        ]);
+
+        DB::transaction(function () use ($request, $validated) {
+            $user = $request->user();
+            $debtsToPay = Debt::where('user_id', $user->id)
+                ->whereIn('id', $validated['debt_ids'])
+                ->where('status', '!=', 'PAID')
+                ->with(['order', 'purchase', 'contact']) // Eager load untuk deskripsi
+                ->get();
+
+            if ($debtsToPay->isEmpty()) {
+                return; // Tidak ada yang perlu dibayar
+            }
+
+            // Tipe hutang/piutang harus seragam, UI sudah memvalidasi via tab
+            $firstDebtType = $debtsToPay->first()->type;
+            $trxType = ($firstDebtType === 'PAYABLE') ? 'EXPENSE' : 'INCOME';
+            $descPrefix = ($firstDebtType === 'PAYABLE') ? 'Pembayaran Hutang' : 'Penerimaan Piutang';
+
+            foreach ($debtsToPay as $debt) {
+                // 1. Buat Transaksi untuk pembayaran
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'account_id' => $validated['account_id'],
+                    'category_id' => $validated['category_id'],
+                    'debt_id' => $debt->id,
+                    'order_id' => $debt->order_id,
+                    'purchase_id' => $debt->purchase_id,
+                    'type' => $trxType,
+                    'amount' => $debt->remaining, // Bayar lunas sisa tagihan
+                    'transaction_date' => $validated['transaction_date'],
+                    'description' => "{$descPrefix} ({$debt->contact->name}) - Ref: " . ($debt->order->invoice_number ?? $debt->purchase->reference_number ?? 'Manual'),
+                ]);
+
+                // 2. Update status Debt
+                $debt->remaining = 0;
+                $debt->status = 'PAID';
+                $debt->save();
+
+                // 3. Update status Order/Purchase terkait jika ada
+                if ($debt->order) $debt->order->update(['status' => 'PAID']);
+                if ($debt->purchase) $debt->purchase->update(['status' => 'PAID']);
+            }
+        });
+
+        return redirect()->back()->with('success', 'Pembayaran untuk ' . count($validated['debt_ids']) . ' tagihan berhasil dicatat.');
     }
 }

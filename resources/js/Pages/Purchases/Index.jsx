@@ -92,14 +92,14 @@ export default function PurchaseIndex({
         qty: 1,
     });
 
-    const isFirstRun = useRef(true);
+    const isInitialMount = useRef(true);
 
     // --- FILTERS ---
     useEffect(() => {
         // Jika ini adalah render pertama (saat halaman baru dimuat atau pindah page),
         // JANGAN jalankan router.get.
-        if (isFirstRun.current) {
-            isFirstRun.current = false;
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
             return;
         }
 
@@ -382,8 +382,15 @@ export default function PurchaseIndex({
                                                 })}
                                             </td>
                                             <td className="px-6 py-4 font-medium text-gray-900">
-                                                {purchase.reference_number ||
-                                                    "-"}
+                                                <div>
+                                                    {purchase.reference_number ||
+                                                        "-"}
+                                                </div>
+                                                {purchase.note && (
+                                                    <div className="text-xs text-gray-400 font-normal italic mt-0.5">
+                                                        {purchase.note}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600">
                                                 {purchase.contact ? (

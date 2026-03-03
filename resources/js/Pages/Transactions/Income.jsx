@@ -101,6 +101,7 @@ export default function IncomeIndex({
             "&:hover": { borderColor: "#22c55e" },
         }),
         menu: (base) => ({ ...base, zIndex: 50 }),
+        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
     };
 
     // --- HANDLERS: FILTER ---
@@ -305,8 +306,8 @@ export default function IncomeIndex({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {transactions.data.length > 0 ? (
-                                    transactions.data.map((trx) => (
+                                {transactions.length > 0 ? (
+                                    transactions.map((trx) => (
                                         <tr
                                             key={trx.id}
                                             className="hover:bg-gray-50/50 transition-colors"
@@ -387,11 +388,6 @@ export default function IncomeIndex({
                     </div>
 
                     {/* Pagination */}
-                    {transactions.links && transactions.links.length > 3 && (
-                        <div className="flex justify-center">
-                            {/* Simple Pagination Links rendering if needed */}
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -472,6 +468,7 @@ export default function IncomeIndex({
                                 placeholder="-- Pilih Akun --"
                                 styles={modalSelectStyles}
                                 className="mt-1"
+                                menuPortalTarget={document.body}
                             />
                             <InputError
                                 message={errors.account_id}
@@ -494,6 +491,7 @@ export default function IncomeIndex({
                                 placeholder="-- Pilih Kategori --"
                                 styles={modalSelectStyles}
                                 className="mt-1"
+                                menuPortalTarget={document.body}
                             />
                             <InputError
                                 message={errors.category_id}

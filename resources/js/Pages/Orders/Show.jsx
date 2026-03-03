@@ -12,6 +12,7 @@ import {
     FileText,
     TrendingUp,
 } from "lucide-react";
+import { Button } from "@headlessui/react";
 
 export default function OrderShow({ order }) {
     const formatRupiah = (number) => {
@@ -37,13 +38,13 @@ export default function OrderShow({ order }) {
             <div className="max-w-4xl mx-auto space-y-6">
                 {/* Back Button & Actions */}
                 <div className="flex items-center justify-between">
-                    <Link
-                        href={route("orders.index")}
+                    <Button
+                        onClick={() => window.history.back()}
                         className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors"
                     >
                         <ArrowLeft size={20} />
                         <span>Kembali ke Daftar</span>
-                    </Link>
+                    </Button>
                     <div className="flex gap-2">
                         <a
                             href={route("transactions.print_invoice", order.id)}
