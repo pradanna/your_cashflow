@@ -253,11 +253,19 @@
 
                             @if ($items->count() > 0)
                                 <div class="item-list">
-                                    @foreach ($items as $item)
-                                        <div class="item-row">
-                                            • {{ $item->item_name }} ({{ $item->qty + 0 }})
-                                        </div>
-                                    @endforeach
+                                    <table width="100%" style="font-size: 8pt; border: none;">
+                                        @foreach ($items as $item)
+                                            <tr>
+                                                <td style="padding: 1px 0;">• {{ $item->item_name }}</td>
+                                                <td class="text-right" style="padding: 1px 0; color: #888;">
+                                                    {{ $item->qty + 0 }} x {{ number_format($item->price, 0, ',', '.') }}
+                                                </td>
+                                                <td class="text-right" style="padding: 1px 0; font-weight: bold; width: 60px;">
+                                                    {{ number_format($item->subtotal, 0, ',', '.') }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </table>
                                 </div>
                             @endif
                         </td>
