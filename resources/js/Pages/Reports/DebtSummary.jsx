@@ -12,6 +12,7 @@ import {
     Scale,
     Eye,
     X,
+    Printer,
 } from "lucide-react";
 import TextInput from "@/Components/TextInput";
 
@@ -465,7 +466,18 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
                                     </div>
                                 ))}
                             </div>
-                            <div className="p-4 border-t bg-white flex justify-end">
+                            <div className="p-4 border-t bg-white flex justify-end gap-3">
+                                <a
+                                    href={route("reports.debt-summary.print", {
+                                        contactId: selectedContact.contact_id,
+                                        type: selectedContact.type,
+                                    })}
+                                    target="_blank"
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                >
+                                    <Printer size={18} />
+                                    Cetak PDF
+                                </a>
                                 <button
                                     onClick={() => setSelectedContact(null)}
                                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"

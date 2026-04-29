@@ -42,8 +42,8 @@ class OrderController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filter: Date Range (Default: Hari ini)
-        $startDate = $request->input('date_start', date('Y-m-d'));
+        // Filter: Date Range (Default: Kemarin sampai Hari ini)
+        $startDate = $request->input('date_start', date('Y-m-d', strtotime('yesterday')));
         $endDate = $request->input('date_end', date('Y-m-d'));
 
         $query->whereDate('transaction_date', '>=', $startDate)
@@ -62,6 +62,7 @@ class OrderController extends Controller
             ->get();
 
         $items = Item::where('user_id', $request->user()->id)
+            ->with('contact')
             ->orderBy('name')
             ->get();
 
@@ -110,6 +111,7 @@ class OrderController extends Controller
             'transaction_date' => 'required|date',
             'status' => 'required|in:UNPAID,PAID',
             'note' => 'nullable|string',
+            'description' => 'nullable|string',
             'account_id' => 'nullable|required_if:status,PAID|exists:accounts,id',
             'category_id' => 'nullable|required_if:status,PAID|exists:categories,id',
             'items' => 'required|array|min:1',
@@ -117,10 +119,17 @@ class OrderController extends Controller
             'items.*.item_name' => 'required|string|max:255',
             'items.*.qty' => 'required|numeric|min:0.01',
             'items.*.price' => 'required|numeric|min:0',
+            // Tambahkan validasi untuk Linked Purchases (Modal per Nota)
+            'linked_purchases' => 'nullable|array',
+            'linked_purchases.*.item_name' => 'required|string|max:255',
+            'linked_purchases.*.supplier_id' => 'nullable|required_if:linked_purchases.*.status,UNPAID|exists:contacts,id',
+            'linked_purchases.*.qty' => 'required|numeric|min:0.01',
+            'linked_purchases.*.amount' => 'required|numeric|min:0',
+            'linked_purchases.*.status' => 'nullable|in:PAID,UNPAID',
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            // Generate Invoice Number: INV/YYYYMMDD/XXXX
+            // ... (Invoice generation logic remains same) ...
             $dateStr = date('Ymd', strtotime($validated['transaction_date']));
             $count = Order::where('user_id', $request->user()->id)
                 ->whereDate('created_at', now())
@@ -128,17 +137,13 @@ class OrderController extends Controller
 
             $invoiceNumber = 'INV/' . $dateStr . '/' . str_pad($count, 4, '0', STR_PAD_LEFT);
 
-            // Ensure uniqueness
             while (Order::where('invoice_number', $invoiceNumber)->exists()) {
                 $count++;
                 $invoiceNumber = 'INV/' . $dateStr . '/' . str_pad($count, 4, '0', STR_PAD_LEFT);
             }
 
-            // Calculate Grand Total
-            $grandTotal = 0;
-            foreach ($validated['items'] as $item) {
-                $grandTotal += ($item['qty'] * $item['price']);
-            }
+            // Calculate Grand Total Sale
+            $grandTotal = collect($validated['items'])->sum(fn($item) => $item['qty'] * $item['price']);
 
             $order = Order::create([
                 'user_id' => $request->user()->id,
@@ -147,7 +152,7 @@ class OrderController extends Controller
                 'transaction_date' => $validated['transaction_date'],
                 'grand_total' => $grandTotal,
                 'status' => $validated['status'],
-                'note' => $validated['note'],
+                'note' => $validated['note'] ?? $validated['description'] ?? null,
             ]);
 
             foreach ($validated['items'] as $item) {
@@ -159,6 +164,60 @@ class OrderController extends Controller
                     'price' => $item['price'],
                     'subtotal' => $item['qty'] * $item['price'],
                 ]);
+            }
+
+            // PROSES LINKED PURCHASES (MODAL OTOMATIS)
+            if (!empty($validated['linked_purchases'])) {
+                foreach ($validated['linked_purchases'] as $lp) {
+                    $lpStatus = $lp['status'] ?? 'PAID';
+
+                    // Create Purchase Header
+                    $purchase = \App\Models\Purchase::create([
+                        'user_id' => $request->user()->id,
+                        'order_id' => $order->id, // LINK KE ORDER INI
+                        'contact_id' => $lp['supplier_id'] ?? null,
+                        'reference_number' => 'AUTO/' . $order->invoice_number,
+                        'transaction_date' => $validated['transaction_date'],
+                        'grand_total' => $lp['amount'],
+                        'status' => $lpStatus,
+                        'note' => "Modal otomatis dari Magic Input untuk Order " . $order->invoice_number,
+                    ]);
+
+                    // Create Purchase Item
+                    $qty = max($lp['qty'] ?? 1, 0.01);
+                    \App\Models\PurchaseItem::create([
+                        'purchase_id' => $purchase->id,
+                        'item_name' => $lp['item_name'],
+                        'qty' => $qty,
+                        'price' => round($lp['amount'] / $qty, 2),
+                        'subtotal' => $lp['amount'],
+                    ]);
+
+                    if ($lpStatus === 'PAID') {
+                        // Buat Transaksi Pengeluaran (EXPENSE) untuk modal ini
+                        \App\Models\Transaction::create([
+                            'user_id' => $request->user()->id,
+                            'account_id' => $validated['account_id'] ?? \App\Models\Account::where('user_id', $request->user()->id)->first()?->id,
+                            'category_id' => \App\Models\Category::where('user_id', $request->user()->id)->where('type', 'EXPENSE')->first()?->id,
+                            'purchase_id' => $purchase->id,
+                            'type' => 'EXPENSE',
+                            'amount' => $lp['amount'],
+                            'transaction_date' => $validated['transaction_date'],
+                            'description' => "Biaya Modal: " . $lp['item_name'] . " untuk " . $order->invoice_number,
+                        ]);
+                    } else {
+                        // Buat Hutang ke Supplier
+                        \App\Models\Debt::create([
+                            'user_id' => $request->user()->id,
+                            'contact_id' => $lp['supplier_id'],
+                            'purchase_id' => $purchase->id,
+                            'type' => 'PAYABLE', // Hutang kita ke supplier
+                            'amount' => $lp['amount'],
+                            'remaining' => $lp['amount'],
+                            'status' => 'UNPAID',
+                        ]);
+                    }
+                }
             }
 
             // LOGIKA PEMBAYARAN
@@ -212,6 +271,12 @@ class OrderController extends Controller
             'items.*.item_name' => 'required|string|max:255',
             'items.*.qty' => 'required|numeric|min:0.01',
             'items.*.price' => 'required|numeric|min:0',
+            'linked_purchases' => 'nullable|array',
+            'linked_purchases.*.item_name' => 'required|string|max:255',
+            'linked_purchases.*.supplier_id' => 'nullable|exists:contacts,id',
+            'linked_purchases.*.qty' => 'required|numeric|min:0.01',
+            'linked_purchases.*.amount' => 'required|numeric|min:0',
+            'linked_purchases.*.status' => 'nullable|in:PAID,UNPAID',
         ]);
 
         DB::transaction(function () use ($validated, $request, $order) {

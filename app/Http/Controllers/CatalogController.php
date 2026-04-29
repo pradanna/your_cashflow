@@ -20,7 +20,8 @@ class CatalogController extends Controller
         $search = $request->input('search');
 
         // 1. Query untuk Items (Penjualan)
-        $itemsQuery = Item::where('user_id', $user->id);
+        $itemsQuery = Item::where('user_id', $user->id)
+            ->with('contact'); // Eager load supplier jika ada
 
         if ($tab === 'items' && $search) {
             $itemsQuery->where('name', 'like', "%{$search}%");
@@ -28,7 +29,7 @@ class CatalogController extends Controller
 
         // 2. Query untuk Supplier Items (Pembelian)
         $supplierItemsQuery = SupplierItem::where('user_id', $user->id)
-            ->with('supplier'); // Eager load relasi ke Contact (Supplier)
+            ->with('contact'); // Eager load relasi ke Contact (Supplier)
 
         if ($tab === 'supplier_items') {
             if ($search) {
@@ -63,6 +64,8 @@ class CatalogController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'purchase_price' => 'nullable|numeric|min:0',
+            'supplier_id' => 'nullable|exists:contacts,id',
             'unit' => 'required|string|max:50',
             'is_stock_active' => 'required|boolean',
         ]);
@@ -70,6 +73,8 @@ class CatalogController extends Controller
         $request->user()->items()->create([
             'name' => $validated['name'],
             'price' => $validated['price'],
+            'purchase_price' => $validated['purchase_price'],
+            'contact_id' => $validated['supplier_id'],
             'unit' => $validated['unit'],
             'is_stock_active' => $validated['is_stock_active'],
         ]);
@@ -84,10 +89,11 @@ class CatalogController extends Controller
     public function storeSupplierItem(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'supplier_id' => 'required|exists:contacts,id',
-            'price' => 'required|numeric|min:0',
-            'unit' => 'required|string|max:50',
+            'name' => 'nullable|string|max:255',
+            'supplier_id' => 'nullable|exists:contacts,id',
+            'price' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
         ]);
 
         SupplierItem::create([
@@ -95,6 +101,7 @@ class CatalogController extends Controller
             'name' => $validated['name'],
             'contact_id' => $validated['supplier_id'],
             'price' => $validated['price'],
+            'selling_price' => $validated['selling_price'],
             'unit' => $validated['unit'],
         ]);
 
@@ -109,11 +116,20 @@ class CatalogController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'purchase_price' => 'nullable|numeric|min:0',
+            'supplier_id' => 'nullable|exists:contacts,id',
             'unit' => 'required|string|max:50',
             'is_stock_active' => 'required|boolean',
         ]);
 
-        $item->update($validated);
+        $item->update([
+            'name' => $validated['name'],
+            'price' => $validated['price'],
+            'purchase_price' => $validated['purchase_price'],
+            'contact_id' => $validated['supplier_id'],
+            'unit' => $validated['unit'],
+            'is_stock_active' => $validated['is_stock_active'],
+        ]);
 
         return redirect()->back()->with('success', 'Item penjualan berhasil diperbarui.');
     }
@@ -133,16 +149,18 @@ class CatalogController extends Controller
     public function updateSupplierItem(Request $request, SupplierItem $supplierItem)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'supplier_id' => 'required|exists:contacts,id',
-            'price' => 'required|numeric|min:0',
-            'unit' => 'required|string|max:50',
+            'name' => 'nullable|string|max:255',
+            'supplier_id' => 'nullable|exists:contacts,id',
+            'price' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
         ]);
 
         $supplierItem->update([
             'name' => $validated['name'],
             'contact_id' => $validated['supplier_id'],
             'price' => $validated['price'],
+            'selling_price' => $validated['selling_price'],
             'unit' => $validated['unit'],
         ]);
 

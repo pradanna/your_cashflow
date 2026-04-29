@@ -4,7 +4,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "concurrently \"vite\" \"php artisan serve\" --names=\"vite,server\" -c \"cyan,magenta\""
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",

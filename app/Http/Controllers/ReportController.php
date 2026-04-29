@@ -229,6 +229,37 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * Cetak Detail Hutang/Piutang per Kontak.
+     */
+    public function printDebtDetail($contactId, $type)
+    {
+        $user = auth()->user();
+        $contact = Contact::where('user_id', $user->id)->findOrFail($contactId);
+
+        $debts = Debt::where('user_id', $user->id)
+            ->where('contact_id', $contactId)
+            ->where('type', $type)
+            ->where('remaining', '>', 0)
+            ->with(['order.items', 'purchase.items'])
+            ->latest()
+            ->get();
+
+        $data = [
+            'contact' => $contact,
+            'debts' => $debts,
+            'type' => $type,
+            'total_remaining' => $debts->sum('remaining'),
+            'company_name' => 'Bigger Advertising', // Bisa diambil dari setting jika ada
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.debt_detail', $data);
+        $pdf->setPaper('a4', 'portrait');
+
+        $filename = ($type === 'RECEIVABLE' ? 'Piutang-' : 'Hutang-') . $contact->name . '.pdf';
+        return $pdf->stream($filename);
+    }
+
     public function profitLoss(Request $request)
     {
         $user = $request->user();

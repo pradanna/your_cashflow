@@ -582,14 +582,14 @@ export default function PurchaseIndex({
                                         ) || null
                                     }
                                     onChange={(selectedOption) => {
-                                        // Pastikan menyimpan nilainya saja, bukan objeknya
-                                        console.log(selectedOption);
-                                        setData(
-                                            "contact_id",
-                                            selectedOption
-                                                ? selectedOption.value
-                                                : "",
-                                        );
+                                        const supplierId = selectedOption ? selectedOption.value : "";
+                                        const supplier = contacts.find(c => c.id == supplierId);
+                                        
+                                        setData({
+                                            ...data,
+                                            contact_id: supplierId,
+                                            status: supplier ? supplier.default_payment_status : "PAID"
+                                        });
                                     }}
                                     placeholder="-- Pilih Supplier --"
                                     isClearable // Agar bisa dikosongkan (tombol X)

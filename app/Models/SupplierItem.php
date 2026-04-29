@@ -8,9 +8,8 @@ class SupplierItem extends Model
 {
     protected $guarded = ['id'];
 
-    public function supplier()
+    public function contact()
     {
-        // 'contact_id' adalah nama kolom di tabel supplier_items
         return $this->belongsTo(Contact::class, 'contact_id');
     }
 }

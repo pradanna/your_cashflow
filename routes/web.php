@@ -40,16 +40,13 @@ Route::middleware('auth')->group(function () {
     Route::resource('contacts', ContactController::class);
     Route::resource('catalogs', CatalogController::class)
         ->except(['store', 'create', 'edit', 'update', 'destroy']);
-    Route::post('/items/store', [CatalogController::class, 'storeItem'])
-        ->name('items.store_custom');
+    Route::post('/items/store', [CatalogController::class, 'storeItem'])->name('items.store_custom');
+    Route::put('/items/{item}', [CatalogController::class, 'updateItem'])->name('items.update');
+    Route::delete('/items/{item}', [CatalogController::class, 'destroyItem'])->name('items.destroy');
 
-    Route::delete('/items/{item}', [CatalogController::class, 'destroyItem'])
-        ->name('items.destroy');
-
-
-    // Route untuk simpan Item Supplier
-    Route::post('/supplier-items/store', [CatalogController::class, 'storeSupplierItem'])
-        ->name('supplier-items.store_custom');
+    Route::post('/supplier-items/store', [CatalogController::class, 'storeSupplierItem'])->name('supplier-items.store_custom');
+    Route::put('/supplier-items/{supplierItem}', [CatalogController::class, 'updateSupplierItem'])->name('supplier-items.update');
+    Route::delete('/supplier-items/{supplierItem}', [CatalogController::class, 'destroySupplierItem'])->name('supplier-items.destroy');
 
     Route::resource('stocks', StockController::class);
     Route::post('/stocks/{stock}/adjust', [StockController::class, 'adjust'])->name('stocks.adjust');
@@ -85,8 +82,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/stock-mutations', [ReportController::class, 'stockMutations'])->name('stock-mutations');
         Route::get('/statements/pdf', [ReportController::class, 'customerStatementPdf'])->name('statements.pdf');
         Route::get('/debt-summary', [ReportController::class, 'debtSummary'])->name('debt-summary');
+        Route::get('/debt-summary/print/{contactId}/{type}', [ReportController::class, 'printDebtDetail'])->name('debt-summary.print');
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
     });
+
+    // --- AI ROUTES ---
+    Route::post('/ai/parse', [\App\Http\Controllers\AIController::class, 'parse'])->name('ai.parse');
 });
 
 

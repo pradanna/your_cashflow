@@ -44,8 +44,8 @@ class PurchaseController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filter: Date Range (Default: Hari ini)
-        $startDate = $request->input('date_start', date('Y-m-d'));
+        // Filter: Date Range (Default: Kemarin sampai Hari ini)
+        $startDate = $request->input('date_start', date('Y-m-d', strtotime('yesterday')));
         $endDate = $request->input('date_end', date('Y-m-d'));
 
         $query->whereDate('transaction_date', '>=', $startDate)
@@ -108,6 +108,7 @@ class PurchaseController extends Controller
             'transaction_date' => 'required|date',
             'status' => 'required|in:UNPAID,PAID',
             'note' => 'nullable|string',
+            'description' => 'nullable|string',
             'account_id' => 'nullable|required_if:status,PAID|exists:accounts,id',
             'category_id' => 'nullable|required_if:status,PAID|exists:categories,id',
             'items' => 'required|array|min:1',
@@ -144,7 +145,7 @@ class PurchaseController extends Controller
                 'transaction_date' => $validated['transaction_date'],
                 'grand_total' => $grandTotal,
                 'status' => $validated['status'],
-                'note' => $validated['note'],
+                'note' => $validated['note'] ?? $validated['description'] ?? null,
             ]);
 
             // 3. Buat Purchase Items & Update Stok

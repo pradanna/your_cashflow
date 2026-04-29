@@ -12,6 +12,7 @@ import {
     ArrowUpRight,
     ArrowDownRight,
 } from "lucide-react";
+import MagicInput from "@/Components/UI/MagicInput";
 
 export default function Dashboard({
     auth,
@@ -26,6 +27,8 @@ export default function Dashboard({
     return (
         <AuthenticatedLayout header="Dashboard Overview">
             <Head title="Dashboard" />
+            
+            <MagicInput />
 
             {/* --- BAGIAN 1: STATS CARDS --- */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

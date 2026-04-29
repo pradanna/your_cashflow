@@ -77,6 +77,7 @@ export default function OrderIndex({
         account_id: "",
         category_id: "",
         items: [],
+        linked_purchases: [], // Baru: Modal per Nota
     });
 
     // Form Payment
@@ -113,10 +114,31 @@ export default function OrderIndex({
         item_id: "",
         item_name: "",
         price: "",
+        base_price: "", // Harga dasar jual dari katalog
+        purchase_price: "",
+        base_purchase_price: "", // Harga dasar modal dari katalog
+        supplier_id: "",
         qty: 1,
+        unit: "",
+        length: 1,
+        width: 1,
+        purchase_status: "PAID",
     });
 
     const isInitialMount = React.useRef(true);
+
+    // Effect untuk hitung harga meteran otomatis
+    useEffect(() => {
+        if (newItem.unit === "meteran") {
+            const area = parseFloat(newItem.length || 0) * parseFloat(newItem.width || 0);
+            
+            setNewItem(prev => ({
+                ...prev,
+                price: area * parseFloat(newItem.base_price || 0),
+                purchase_price: area * parseFloat(newItem.base_purchase_price || 0)
+            }));
+        }
+    }, [newItem.length, newItem.width, newItem.base_price, newItem.base_purchase_price, newItem.unit]);
 
     // Debounce search / auto-submit filter
     useEffect(() => {
@@ -171,6 +193,15 @@ export default function OrderIndex({
                 qty: parseFloat(item.qty),
                 price: parseFloat(item.price),
             })),
+            linked_purchases: order.purchases
+                ? order.purchases.map((p) => ({
+                      item_name: p.items[0]?.item_name || p.note,
+                      supplier_id: p.contact_id || "",
+                      qty: p.items[0]?.qty || 1,
+                      amount: p.grand_total,
+                      status: p.status,
+                  }))
+                : [],
         });
         setCreateOpen(true);
     };
@@ -179,41 +210,107 @@ export default function OrderIndex({
         e.preventDefault();
         if (!newItem.item_name || !newItem.price || !newItem.qty) return;
 
+        let finalItemName = newItem.item_name;
+        if (newItem.unit === "meteran") {
+            finalItemName += ` (${newItem.length}x${newItem.width})`;
+        }
+
         const itemToAdd = {
             ...newItem,
+            item_name: finalItemName,
             qty: parseFloat(newItem.qty),
             price: parseFloat(newItem.price),
         };
 
-        setData("items", [...data.items, itemToAdd]);
+        setData({
+            ...data,
+            items: [...data.items, itemToAdd],
+            linked_purchases:
+                newItem.purchase_price > 0
+                    ? [
+                          ...data.linked_purchases,
+                          {
+                              item_name: newItem.item_name,
+                              supplier_id: newItem.supplier_id || "",
+                              qty: newItem.qty,
+                              amount: newItem.purchase_price * newItem.qty,
+                              status: newItem.purchase_status || "PAID",
+                          },
+                      ]
+                    : data.linked_purchases,
+        });
+
         setAddItemOpen(false);
         // Reset new item form
-        setNewItem({ item_id: "", item_name: "", price: "", qty: 1 });
+        setNewItem({
+            item_id: "",
+            item_name: "",
+            price: "",
+            base_price: "",
+            purchase_price: "",
+            base_purchase_price: "",
+            supplier_id: "",
+            qty: 1,
+            unit: "",
+            length: 1,
+            width: 1,
+        });
     };
 
     const handleRemoveItem = (index) => {
         const updatedItems = [...data.items];
+        // Jika item ini punya linked purchase (berdasarkan index atau nama? biasanya nama/index 1:1 jika ditambah bersamaan)
+        // Namun lebih aman jika kita biarkan user hapus terpisah atau hapus item menghapus modalnya.
+        // Di handleAddItem, kita menambahkannya secara berurutan.
+        // Untuk sederhananya, jika user hapus item jual, kita biarkan saja modalnya ada (user bisa hapus manual modalnya)
+        // atau kita coba sync. Mari buat hapus terpisah saja agar fleksibel.
         updatedItems.splice(index, 1);
         setData("items", updatedItems);
     };
 
-    const handleItemSelect = (e) => {
-        const selectedId = e.target.value;
-        const selectedItem = items.find((i) => i.id == selectedId);
+    const handleRemoveLinkedPurchase = (index) => {
+        const updated = [...data.linked_purchases];
+        updated.splice(index, 1);
+        setData("linked_purchases", updated);
+    };
 
-        if (selectedItem) {
-            setNewItem({
-                ...newItem,
-                item_id: selectedId,
-                item_name: selectedItem.name,
-                price: selectedItem.price,
-            });
-        } else {
+    const handleItemSelect = (selectedOption) => {
+        if (!selectedOption) {
             setNewItem({
                 ...newItem,
                 item_id: "",
                 item_name: "",
                 price: "",
+                purchase_price: "",
+                supplier_id: "",
+            });
+            return;
+        }
+
+        const selectedId = selectedOption.value;
+        const selectedItem = items.find((i) => i.id == selectedId);
+
+        if (selectedItem) {
+            console.log("Selected Item:", selectedItem); // Debugging
+            
+            // Mencoba mengambil supplier_id dari beberapa kemungkinan field
+            const autoSupplierId = selectedItem.contact_id || selectedItem.supplier_id || (selectedItem.contact ? selectedItem.contact.id : "");
+
+            const autoSupplier = suppliers.find(s => s.id == autoSupplierId);
+
+            setNewItem({
+                ...newItem,
+                item_id: String(selectedId),
+                item_name: selectedItem.name,
+                base_price: selectedItem.price,
+                price: selectedItem.price,
+                base_purchase_price: selectedItem.purchase_price || "",
+                purchase_price: selectedItem.purchase_price || "",
+                supplier_id: autoSupplierId ? String(autoSupplierId) : "",
+                purchase_status: autoSupplier ? autoSupplier.default_payment_status : "PAID",
+                unit: selectedItem.unit || "",
+                length: 1,
+                width: 1,
             });
         }
     };
@@ -671,7 +768,7 @@ export default function OrderIndex({
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* KIRI: Informasi Order */}
                         <div className="space-y-5">
                             <h3 className="font-semibold text-gray-700 border-b pb-2">
@@ -688,14 +785,16 @@ export default function OrderIndex({
                                     value={contactOptions.find(
                                         (opt) => opt.value === data.contact_id,
                                     )}
-                                    onChange={(selectedOption) =>
-                                        setData(
-                                            "contact_id",
-                                            selectedOption
-                                                ? selectedOption.value
-                                                : "",
-                                        )
-                                    }
+                                    onChange={(selectedOption) => {
+                                        const contactId = selectedOption ? selectedOption.value : "";
+                                        const contact = contacts.find(c => c.id == contactId);
+                                        
+                                        setData({
+                                            ...data,
+                                            contact_id: contactId,
+                                            status: contact ? contact.default_payment_status : "PAID"
+                                        });
+                                    }}
                                     placeholder="-- Pilih Pelanggan --"
                                     isClearable // Agar bisa dikosongkan (tombol X)
                                     isSearchable // Fitur pencarian otomatis
@@ -860,11 +959,11 @@ export default function OrderIndex({
                             </div>
                         </div>
 
-                        {/* KANAN: Item Pembelian */}
-                        <div className="flex flex-col h-full">
-                            <div className="flex justify-between items-center border-b pb-2 mb-4">
-                                <h3 className="font-semibold text-gray-700">
-                                    Item Pembelian
+                        {/* TENGAH: Tabel Item Penjualan */}
+                        <div className="flex flex-col">
+                            <div className="flex justify-between items-center border-b pb-2 mb-3">
+                                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                                    <FileText size={16} /> Item Penjualan
                                 </h3>
                                 <SecondaryButton
                                     type="button"
@@ -872,70 +971,149 @@ export default function OrderIndex({
                                     size="sm"
                                     className="gap-2 text-xs"
                                 >
-                                    <Plus size={14} /> Tambah Item
+                                    <Plus size={14} /> Item
                                 </SecondaryButton>
                             </div>
 
-                            <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 overflow-hidden flex flex-col">
-                                <div className="overflow-y-auto max-h-[400px]">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gray-100 text-gray-600 font-medium border-b border-gray-200">
+                            <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-100 text-gray-600 font-medium border-b border-gray-200">
+                                        <tr>
+                                            <th className="px-4 py-2">Item</th>
+                                            <th className="px-4 py-2 text-center w-16">
+                                                Qty
+                                            </th>
+                                            <th className="px-4 py-2 text-right">
+                                                Total
+                                            </th>
+                                            <th className="px-4 py-2 w-8"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {data.items.length > 0 ? (
+                                            data.items.map((item, index) => (
+                                                <tr
+                                                    key={index}
+                                                    className="bg-white"
+                                                >
+                                                    <td className="px-4 py-2">
+                                                        <div className="font-medium text-gray-900 leading-tight">
+                                                            {item.item_name}
+                                                        </div>
+                                                        <div className="text-[10px] text-gray-400 mt-1">
+                                                            @{" "}
+                                                            {formatRupiah(
+                                                                item.price,
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-2 text-center">
+                                                        {item.qty}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-right font-medium">
+                                                        {formatRupiah(
+                                                            item.price *
+                                                                item.qty,
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleRemoveItem(
+                                                                    index,
+                                                                )
+                                                            }
+                                                            className="text-red-400 hover:text-red-600"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td
+                                                    colSpan="4"
+                                                    className="px-4 py-6 text-center text-gray-400 text-xs italic"
+                                                >
+                                                    Belum ada item jual.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* KANAN: Tabel Pengeluaran & Ringkasan */}
+                        <div className="space-y-6">
+                            {/* TABEL BIAYA MODAL (OTOMATIS) */}
+                            <div className="flex flex-col">
+                                <div className="flex justify-between items-center border-b pb-2 mb-3">
+                                    <h3 className="font-semibold text-orange-700 flex items-center gap-2">
+                                        <ShoppingBag size={16} /> Biaya Modal
+                                    </h3>
+                                </div>
+
+                                <div className="bg-orange-50/30 rounded-xl border border-orange-100 overflow-hidden">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-orange-100/50 text-orange-800 font-medium border-b border-orange-100">
                                             <tr>
                                                 <th className="px-4 py-2">
-                                                    Item
-                                                </th>
-                                                <th className="px-4 py-2 text-center">
-                                                    Qty
+                                                    Deskripsi
                                                 </th>
                                                 <th className="px-4 py-2 text-right">
-                                                    Total
+                                                    Nominal
                                                 </th>
-                                                <th className="px-4 py-2 w-10"></th>
+                                                <th className="px-4 py-2 w-8"></th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {data.items.length > 0 ? (
-                                                data.items.map(
-                                                    (item, index) => (
+                                        <tbody className="divide-y divide-orange-100">
+                                            {data.linked_purchases.length >
+                                            0 ? (
+                                                data.linked_purchases.map(
+                                                    (lp, index) => (
                                                         <tr
                                                             key={index}
-                                                            className="bg-white"
+                                                            className="bg-white/50"
                                                         >
                                                             <td className="px-4 py-2">
-                                                                <div className="font-medium text-gray-900">
+                                                                <div className="font-medium leading-tight">
                                                                     {
-                                                                        item.item_name
+                                                                        lp.item_name
                                                                     }
                                                                 </div>
-                                                                <div className="text-xs text-gray-500">
-                                                                    @{" "}
-                                                                    {formatRupiah(
-                                                                        item.price,
-                                                                    )}
+                                                                <div className="text-[9px] text-gray-400 mt-0.5">
+                                                                    Supplier:{" "}
+                                                                    {suppliers.find(
+                                                                        (
+                                                                            s,
+                                                                        ) =>
+                                                                            s.id ==
+                                                                            lp.supplier_id,
+                                                                    )?.name ||
+                                                                        "-"}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-4 py-2 text-center">
-                                                                {item.qty}
-                                                            </td>
-                                                            <td className="px-4 py-2 text-right font-medium">
+                                                            <td className="px-4 py-2 text-right font-bold text-orange-600">
                                                                 {formatRupiah(
-                                                                    item.price *
-                                                                        item.qty,
+                                                                    lp.amount,
                                                                 )}
                                                             </td>
                                                             <td className="px-4 py-2 text-center">
                                                                 <button
                                                                     type="button"
                                                                     onClick={() =>
-                                                                        handleRemoveItem(
+                                                                        handleRemoveLinkedPurchase(
                                                                             index,
                                                                         )
                                                                     }
-                                                                    className="text-red-500 hover:text-red-700"
+                                                                    className="text-red-400 hover:text-red-600"
                                                                 >
-                                                                    <Trash2
+                                                                    <X
                                                                         size={
-                                                                            16
+                                                                            14
                                                                         }
                                                                     />
                                                                 </button>
@@ -946,30 +1124,62 @@ export default function OrderIndex({
                                             ) : (
                                                 <tr>
                                                     <td
-                                                        colSpan="4"
-                                                        className="px-4 py-8 text-center text-gray-400 text-xs"
+                                                        colSpan="3"
+                                                        className="px-4 py-4 text-center text-gray-400 italic"
                                                     >
-                                                        Belum ada item
-                                                        ditambahkan.
+                                                        Tidak ada biaya modal.
                                                     </td>
                                                 </tr>
                                             )}
                                         </tbody>
                                     </table>
                                 </div>
+                            </div>
 
-                                {/* Grand Total Footer */}
-                                <div className="mt-auto bg-white border-t border-gray-200 p-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 font-medium">
-                                            Grand Total
-                                        </span>
-                                        <span className="text-xl font-bold text-red-600">
-                                            {formatRupiah(grandTotal)}
-                                        </span>
-                                    </div>
+                            {/* RINGKASAN AKHIR */}
+                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500">
+                                        Total Penjualan
+                                    </span>
+                                    <span className="font-bold text-gray-900">
+                                        {formatRupiah(grandTotal)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500">
+                                        Total Modal
+                                    </span>
+                                    <span className="font-medium text-orange-600">
+                                        -{" "}
+                                        {formatRupiah(
+                                            data.linked_purchases.reduce(
+                                                (sum, lp) =>
+                                                    sum +
+                                                    parseFloat(lp.amount),
+                                                0,
+                                            ),
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="border-t pt-3 flex justify-between items-center">
+                                    <span className="text-gray-800 font-bold">
+                                        Estimasi Profit
+                                    </span>
+                                    <span className="text-xl font-black text-blue-600">
+                                        {formatRupiah(
+                                            grandTotal -
+                                                data.linked_purchases.reduce(
+                                                    (sum, lp) =>
+                                                        sum +
+                                                        parseFloat(lp.amount),
+                                                    0,
+                                                ),
+                                        )}
+                                    </span>
                                 </div>
                             </div>
+
                             <InputError
                                 message={errors.items}
                                 className="mt-2"
@@ -1007,20 +1217,70 @@ export default function OrderIndex({
                     </h3>
                     <div className="space-y-4">
                         <div>
-                            <InputLabel value="Pilih Item (Opsional)" />
-                            <select
-                                className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                value={newItem.item_id}
+                            <InputLabel value="Pilih Item (Katalog)" />
+                            <Select
+                                className="mt-1"
+                                classNamePrefix="react-select"
+                                options={items.map((item) => ({
+                                    value: item.id,
+                                    label: `${item.name} (${formatRupiah(item.price)})`,
+                                }))}
+                                value={
+                                    items
+                                        .map((item) => ({
+                                            value: item.id,
+                                            label: `${item.name} (${formatRupiah(item.price)})`,
+                                        }))
+                                        .find((opt) => opt.value == newItem.item_id) ||
+                                    null
+                                }
                                 onChange={handleItemSelect}
-                            >
-                                <option value="">-- Item Manual --</option>
-                                {items.map((item) => (
-                                    <option key={item.id} value={item.id}>
-                                        {item.name} ({formatRupiah(item.price)})
-                                    </option>
-                                ))}
-                            </select>
+                                placeholder="-- Pilih Item --"
+                                isClearable
+                                isSearchable
+                            />
                         </div>
+
+                        {newItem.unit === "meteran" && (
+                            <div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                                <div>
+                                    <InputLabel value="Panjang (m)" className="text-blue-700" />
+                                    <TextInput
+                                        type="number"
+                                        step="0.01"
+                                        className="w-full mt-1"
+                                        value={newItem.length}
+                                        onChange={(e) =>
+                                            setNewItem({
+                                                ...newItem,
+                                                length: e.target.value,
+                                            })
+                                        }
+                                        placeholder="1"
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel value="Lebar (m)" className="text-blue-700" />
+                                    <TextInput
+                                        type="number"
+                                        step="0.01"
+                                        className="w-full mt-1"
+                                        value={newItem.width}
+                                        onChange={(e) =>
+                                            setNewItem({
+                                                ...newItem,
+                                                width: e.target.value,
+                                            })
+                                        }
+                                        placeholder="1"
+                                    />
+                                </div>
+                                <div className="col-span-2 text-[10px] text-blue-500 italic">
+                                    * Luas: {parseFloat(newItem.length || 0) * parseFloat(newItem.width || 0)} m²
+                                </div>
+                            </div>
+                        )}
+
                         <div>
                             <InputLabel value="Nama Item" />
                             <TextInput
@@ -1070,10 +1330,99 @@ export default function OrderIndex({
                                 />
                             </div>
                         </div>
+
+                        {/* --- MODAL INPUT (LINKED PURCHASE) --- */}
+                        <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl space-y-3">
+                            <div className="flex items-center gap-2 text-orange-700 font-bold text-xs uppercase tracking-wider">
+                                <ShoppingBag size={14} /> Biaya Modal (Opsional)
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <InputLabel
+                                        value="Harga Modal (Satuan)"
+                                        className="text-xs"
+                                    />
+                                    <TextInput
+                                        type="number"
+                                        className="w-full mt-1 text-sm"
+                                        value={newItem.purchase_price}
+                                        onChange={(e) =>
+                                            setNewItem({
+                                                ...newItem,
+                                                purchase_price: e.target.value,
+                                            })
+                                        }
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel
+                                        value="Supplier"
+                                        className="text-xs"
+                                    />
+                                    <Select
+                                        className="mt-1 text-sm"
+                                        classNamePrefix="react-select"
+                                        options={suppliers.map((s) => ({
+                                            value: s.id,
+                                            label: s.name,
+                                        }))}
+                                        value={
+                                            suppliers
+                                                .map((s) => ({
+                                                    value: s.id,
+                                                    label: s.name,
+                                                }))
+                                                .find(
+                                                    (opt) =>
+                                                        String(opt.value) ===
+                                                        String(newItem.supplier_id),
+                                                ) || null
+                                        }
+                                        onChange={(selectedOption) => {
+                                            const sId = selectedOption ? selectedOption.value : "";
+                                            const sup = suppliers.find(s => s.id == sId);
+                                            setNewItem({
+                                                ...newItem,
+                                                supplier_id: sId,
+                                                purchase_status: sup ? sup.default_payment_status : "PAID"
+                                            });
+                                        }}
+                                        placeholder="-- Pilih Supplier --"
+                                        isClearable
+                                        isSearchable
+                                    />
+                                </div>
+                            </div>
+                            
+                            {newItem.supplier_id && (
+                                <div className="mt-2">
+                                    <InputLabel value="Status Modal" className="text-[10px]" />
+                                    <select
+                                        className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-xs py-1"
+                                        value={newItem.purchase_status}
+                                        onChange={(e) => setNewItem({ ...newItem, purchase_status: e.target.value })}
+                                    >
+                                        <option value="PAID">Lunas (Cash)</option>
+                                        <option value="UNPAID">Hutang (Belum Lunas)</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {newItem.purchase_price > 0 && (
+                                <div className="text-[10px] text-orange-600 italic">
+                                    * Total pengeluaran otomatis:{" "}
+                                    {formatRupiah(
+                                        newItem.purchase_price * newItem.qty,
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="pt-2 text-right">
                             <p className="text-sm text-gray-500">
-                                Subtotal:{" "}
-                                <span className="font-bold text-gray-900">
+                                Subtotal Jual:{" "}
+                                <span className="font-bold text-red-600">
                                     {formatRupiah(newItem.price * newItem.qty)}
                                 </span>
                             </p>

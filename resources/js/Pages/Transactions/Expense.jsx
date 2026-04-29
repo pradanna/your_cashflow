@@ -210,7 +210,7 @@ export default function ExpenseIndex({
             user={auth.user}
             header={
                 <h2 className="font-semibold text-xl text-gray-800 leading-tight">
-                    Pemasukan (Expense)
+                    Pengeluaran (Expense)
                 </h2>
             }
         >

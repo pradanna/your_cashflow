@@ -52,9 +52,11 @@ export default function CatalogIndex({
     } = useForm({
         name: "",
         price: "",
+        purchase_price: "", // Baru untuk modal item jual
+        selling_price: "",
         unit: "",
         is_stock_active: true,
-        supplier_id: "", // Khusus supplier_items
+        supplier_id: "",
     });
 
     // Handle Filter Trigger
@@ -160,9 +162,11 @@ export default function CatalogIndex({
         setData({
             name: item.name,
             price: item.price,
+            purchase_price: item.purchase_price || "", // Baru
+            selling_price: item.selling_price || "",
             unit: item.unit,
             is_stock_active: item.is_stock_active ?? true,
-            supplier_id: item.contact_id || item.supplier_id || "", // Adjust based on model
+            supplier_id: item.contact_id || item.supplier_id || "",
         });
         setModalOpen(true);
     };
@@ -213,9 +217,27 @@ export default function CatalogIndex({
                 {activeTab === "items" ? (
                     <>
                         <td className="px-6 py-4 text-gray-600">
-                            {formatRupiah(item.price)}
+                            <div className="flex flex-col">
+                                <span className="font-medium text-red-600">
+                                    {formatRupiah(item.price)}
+                                </span>
+                                {item.purchase_price > 0 && (
+                                    <span className="text-[10px] text-gray-400">
+                                        Modal: {formatRupiah(item.purchase_price)}
+                                    </span>
+                                )}
+                            </div>
                         </td>
-                        <td className="px-6 py-4 text-gray-600">{item.unit}</td>
+                        <td className="px-6 py-4 text-gray-600">
+                            <div className="flex flex-col">
+                                <span>{item.unit}</span>
+                                {item.contact && (
+                                    <span className="text-[10px] text-blue-500 truncate max-w-[100px]">
+                                        {item.contact.name}
+                                    </span>
+                                )}
+                            </div>
+                        </td>
                         <td className="px-6 py-4">
                             <span
                                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -231,7 +253,7 @@ export default function CatalogIndex({
                 ) : (
                     <>
                         <td className="px-6 py-4 text-gray-600">
-                            {item.supplier?.name || "-"}
+                            {item.contact?.name || "-"}
                         </td>
                         <td className="px-6 py-4 text-gray-600">
                             {formatRupiah(item.price)}
@@ -455,7 +477,6 @@ export default function CatalogIndex({
                                 className="mt-1 block w-full"
                                 placeholder="Contoh: Jasa Desain Logo"
                                 isFocused
-                                required
                             />
                             <InputError
                                 message={errors.name}
@@ -468,37 +489,93 @@ export default function CatalogIndex({
                             <>
                                 <div>
                                     <InputLabel
-                                        htmlFor="price"
-                                        value="Harga Jual"
+                                        htmlFor="supplier_id_item"
+                                        value="Supplier (Opsional)"
                                     />
-                                    <TextInput
-                                        id="price"
-                                        type="number"
-                                        value={data.price}
+                                    <select
+                                        id="supplier_id_item"
+                                        value={data.supplier_id}
                                         onChange={(e) =>
-                                            setData("price", e.target.value)
+                                            setData(
+                                                "supplier_id",
+                                                e.target.value,
+                                            )
                                         }
-                                        className="mt-1 block w-full"
-                                        placeholder="150000"
-                                        required
-                                    />
+                                        className="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
+                                    >
+                                        <option value="">Pilih Supplier</option>
+                                        {suppliers.map((sup) => (
+                                            <option key={sup.id} value={sup.id}>
+                                                {sup.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                     <InputError
-                                        message={errors.price}
+                                        message={errors.supplier_id}
                                         className="mt-2"
                                     />
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="price"
+                                            value="Harga Jual"
+                                        />
+                                        <TextInput
+                                            id="price"
+                                            type="number"
+                                            value={data.price}
+                                            onChange={(e) =>
+                                                setData("price", e.target.value)
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="150000"
+                                            required
+                                        />
+                                        <InputError
+                                            message={errors.price}
+                                            className="mt-2"
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="purchase_price"
+                                            value="Harga Modal"
+                                        />
+                                        <TextInput
+                                            id="purchase_price"
+                                            type="number"
+                                            value={data.purchase_price}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "purchase_price",
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="100000"
+                                        />
+                                        <InputError
+                                            message={errors.purchase_price}
+                                            className="mt-2"
+                                        />
+                                    </div>
+                                </div>
                                 <div>
                                     <InputLabel htmlFor="unit" value="Unit" />
-                                    <TextInput
+                                    <select
                                         id="unit"
                                         value={data.unit}
                                         onChange={(e) =>
                                             setData("unit", e.target.value)
                                         }
-                                        className="mt-1 block w-full"
-                                        placeholder="pcs, jam, paket"
+                                        className="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
                                         required
-                                    />
+                                    >
+                                        <option value="">Pilih Unit</option>
+                                        <option value="meteran">meteran</option>
+                                        <option value="pcs">pcs</option>
+                                    </select>
                                     <InputError
                                         message={errors.unit}
                                         className="mt-2"
@@ -551,7 +628,6 @@ export default function CatalogIndex({
                                             )
                                         }
                                         className="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                        required
                                     >
                                         <option value="">Pilih Supplier</option>
                                         {suppliers.map((sup) => (
@@ -565,39 +641,65 @@ export default function CatalogIndex({
                                         className="mt-2"
                                     />
                                 </div>
-                                <div>
-                                    <InputLabel
-                                        htmlFor="price"
-                                        value="Harga Beli"
-                                    />
-                                    <TextInput
-                                        id="price"
-                                        type="number"
-                                        value={data.price}
-                                        onChange={(e) =>
-                                            setData("price", e.target.value)
-                                        }
-                                        className="mt-1 block w-full"
-                                        placeholder="100000"
-                                        required
-                                    />
-                                    <InputError
-                                        message={errors.price}
-                                        className="mt-2"
-                                    />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="price"
+                                            value="Harga Beli"
+                                        />
+                                        <TextInput
+                                            id="price"
+                                            type="number"
+                                            value={data.price}
+                                            onChange={(e) =>
+                                                setData("price", e.target.value)
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="100000"
+                                        />
+                                        <InputError
+                                            message={errors.price}
+                                            className="mt-2"
+                                        />
+                                    </div>
+                                    <div>
+                                        <InputLabel
+                                            htmlFor="selling_price"
+                                            value="Harga Jual"
+                                        />
+                                        <TextInput
+                                            id="selling_price"
+                                            type="number"
+                                            value={data.selling_price}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "selling_price",
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full"
+                                            placeholder="150000"
+                                        />
+                                        <InputError
+                                            message={errors.selling_price}
+                                            className="mt-2"
+                                        />
+                                    </div>
                                 </div>
                                 <div>
                                     <InputLabel htmlFor="unit" value="Unit" />
-                                    <TextInput
+                                    <select
                                         id="unit"
                                         value={data.unit}
                                         onChange={(e) =>
                                             setData("unit", e.target.value)
                                         }
-                                        className="mt-1 block w-full"
-                                        placeholder="kg, rim, box"
-                                        required
-                                    />
+                                        className="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
+                                    >
+                                        <option value="">Pilih Unit</option>
+                                        <option value="meteran">meteran</option>
+                                        <option value="pcs">pcs</option>
+                                    </select>
                                     <InputError
                                         message={errors.unit}
                                         className="mt-2"

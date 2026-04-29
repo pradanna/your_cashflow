@@ -37,6 +37,7 @@ export default function ContactIndex({ auth, contacts, filters }) {
             type: "BOTH",
             phone: "",
             address: "",
+            default_payment_status: "PAID",
         });
     const deleteForm = useForm();
 
@@ -79,6 +80,7 @@ export default function ContactIndex({ auth, contacts, filters }) {
             type: contact.type,
             phone: contact.phone || "",
             address: contact.address || "",
+            default_payment_status: contact.default_payment_status || "PAID",
         });
         clearErrors();
         setFormModalOpen(true);
@@ -207,6 +209,7 @@ export default function ContactIndex({ auth, contacts, filters }) {
                                         <th className="px-6 py-4">Tipe</th>
                                         <th className="px-6 py-4">Telepon</th>
                                         <th className="px-6 py-4">Alamat</th>
+                                        <th className="px-6 py-4 text-center">Default Bayar</th>
                                         <th className="px-6 py-4 text-center">
                                             Aksi
                                         </th>
@@ -239,6 +242,17 @@ export default function ContactIndex({ auth, contacts, filters }) {
                                                     </td>
                                                     <td className="px-6 py-4 text-gray-600 max-w-xs truncate">
                                                         {contact.address || "-"}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        {contact.default_payment_status === "PAID" ? (
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
+                                                                Lunas
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
+                                                                Hutang
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
                                                         <div className="flex justify-center gap-1">
@@ -276,7 +290,7 @@ export default function ContactIndex({ auth, contacts, filters }) {
                                     ) : (
                                         <tr>
                                             <td
-                                                colSpan="5"
+                                                colSpan="6"
                                                 className="px-6 py-12 text-center text-gray-400"
                                             >
                                                 <div className="flex flex-col items-center gap-2">
@@ -408,6 +422,37 @@ export default function ContactIndex({ auth, contacts, filters }) {
                             ></textarea>
                             <InputError
                                 message={errors.address}
+                                className="mt-2"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Default Status Pembayaran" />
+                            <div className="flex gap-4 mt-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        className="text-red-600 focus:ring-red-500"
+                                        name="default_payment_status"
+                                        value="PAID"
+                                        checked={data.default_payment_status === "PAID"}
+                                        onChange={(e) => setData("default_payment_status", e.target.value)}
+                                    />
+                                    <span className="text-sm text-gray-700">Lunas (PAID)</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        className="text-red-600 focus:ring-red-500"
+                                        name="default_payment_status"
+                                        value="UNPAID"
+                                        checked={data.default_payment_status === "UNPAID"}
+                                        onChange={(e) => setData("default_payment_status", e.target.value)}
+                                    />
+                                    <span className="text-sm text-gray-700">Hutang (UNPAID)</span>
+                                </label>
+                            </div>
+                            <InputError
+                                message={errors.default_payment_status}
                                 className="mt-2"
                             />
                         </div>

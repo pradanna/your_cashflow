@@ -47,6 +47,7 @@ class ContactController extends Controller
             'type' => ['required', Rule::in(['CUSTOMER', 'SUPPLIER', 'BOTH'])],
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:1000',
+            'default_payment_status' => ['required', Rule::in(['PAID', 'UNPAID'])],
         ]);
 
         $request->user()->contacts()->create($validated);
@@ -68,6 +69,7 @@ class ContactController extends Controller
             'type' => ['required', Rule::in(['CUSTOMER', 'SUPPLIER', 'BOTH'])],
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:1000',
+            'default_payment_status' => ['required', Rule::in(['PAID', 'UNPAID'])],
         ]);
 
         $contact->update($validated);

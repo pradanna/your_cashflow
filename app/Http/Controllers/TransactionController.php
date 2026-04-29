@@ -25,8 +25,8 @@ class TransactionController extends Controller
             ->where('type', 'INCOME')
             ->with(['account', 'category', 'order.contact', 'order.purchases', 'debt.contact']);
 
-        // Filter: Date Range (Default: Hari ini)
-        $startDate = $request->input('date_start', date('Y-m-d'));
+        // Filter: Date Range (Default: Kemarin sampai Hari ini)
+        $startDate = $request->input('date_start', date('Y-m-d', strtotime('yesterday')));
         $endDate = $request->input('date_end', date('Y-m-d'));
 
         $query->whereDate('transaction_date', '>=', $startDate)
@@ -86,8 +86,8 @@ class TransactionController extends Controller
             ->where('type', 'EXPENSE')
             ->with(['account', 'category', 'purchase.contact', 'purchase.order', 'debt.contact']);
 
-        // Filter: Date Range (Default: Hari ini)
-        $startDate = $request->input('date_start', date('Y-m-d'));
+        // Filter: Date Range (Default: Kemarin sampai Hari ini)
+        $startDate = $request->input('date_start', date('Y-m-d', strtotime('yesterday')));
         $endDate = $request->input('date_end', date('Y-m-d'));
 
         $query->whereDate('transaction_date', '>=', $startDate)
