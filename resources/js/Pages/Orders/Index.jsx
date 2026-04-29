@@ -123,6 +123,7 @@ export default function OrderIndex({
         length: 1,
         width: 1,
         purchase_status: "PAID",
+        purchase_amount: 0,
     });
 
     const isInitialMount = React.useRef(true);
@@ -139,6 +140,14 @@ export default function OrderIndex({
             }));
         }
     }, [newItem.length, newItem.width, newItem.base_price, newItem.base_purchase_price, newItem.unit]);
+
+    // Effect untuk hitung total harga modal otomatis saat harga satuan atau qty berubah
+    useEffect(() => {
+        setNewItem(prev => ({
+            ...prev,
+            purchase_amount: parseFloat(prev.purchase_price || 0) * parseFloat(prev.qty || 1)
+        }));
+    }, [newItem.purchase_price, newItem.qty]);
 
     // Debounce search / auto-submit filter
     useEffect(() => {
@@ -233,7 +242,7 @@ export default function OrderIndex({
                               item_name: newItem.item_name,
                               supplier_id: newItem.supplier_id || "",
                               qty: newItem.qty,
-                              amount: newItem.purchase_price * newItem.qty,
+                              amount: newItem.purchase_amount || (newItem.purchase_price * newItem.qty),
                               status: newItem.purchase_status || "PAID",
                           },
                       ]
@@ -1409,9 +1418,28 @@ export default function OrderIndex({
                                 </div>
                             )}
 
+                            <div className="mt-2">
+                                <InputLabel
+                                    value="Total Harga Modal"
+                                    className="text-[10px] text-orange-700"
+                                />
+                                <TextInput
+                                    type="number"
+                                    className="w-full mt-1 text-xs bg-orange-50 border-orange-200"
+                                    value={newItem.purchase_amount}
+                                    onChange={(e) =>
+                                        setNewItem({
+                                            ...newItem,
+                                            purchase_amount: e.target.value,
+                                        })
+                                    }
+                                    placeholder="0"
+                                />
+                            </div>
+
                             {newItem.purchase_price > 0 && (
-                                <div className="text-[10px] text-orange-600 italic">
-                                    * Total pengeluaran otomatis:{" "}
+                                <div className="text-[10px] text-orange-400 italic">
+                                    * Kalkulasi sistem:{" "}
                                     {formatRupiah(
                                         newItem.purchase_price * newItem.qty,
                                     )}
