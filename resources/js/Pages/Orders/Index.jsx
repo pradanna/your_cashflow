@@ -204,9 +204,9 @@ export default function OrderIndex({
             })),
             linked_purchases: order.purchases
                 ? order.purchases.map((p) => ({
-                      item_name: p.items[0]?.item_name || p.note,
+                      item_name: p.items?.[0]?.item_name || p.note,
                       supplier_id: p.contact_id || "",
-                      qty: p.items[0]?.qty || 1,
+                      qty: p.items?.[0]?.qty || 1,
                       amount: p.grand_total,
                       status: p.status,
                   }))

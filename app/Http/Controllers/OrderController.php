@@ -25,7 +25,7 @@ class OrderController extends Controller
     {
         $query = Order::query()
             ->where('user_id', $request->user()->id)
-            ->with(['contact', 'items', 'transaction.account', 'debt', 'purchases']); // Eager load transaction.account
+            ->with(['contact', 'items', 'transaction.account', 'debt', 'purchases.items']); // Eager load transaction.account
 
         // Filter: Search (Invoice / Customer Name)
         if ($request->search) {
