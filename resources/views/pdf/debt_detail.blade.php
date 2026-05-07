@@ -201,7 +201,7 @@
                         @if(($filters['month'] ?? 'ALL') !== 'ALL' || ($filters['year'] ?? 'ALL') !== 'ALL')
                             Periode: 
                             @if(($filters['month'] ?? 'ALL') !== 'ALL')
-                                {{ \Carbon\Carbon::create()->month($filters['month'])->translatedFormat('F') }}
+                                {{ \Carbon\Carbon::create()->month((int)$filters['month'])->translatedFormat('F') }}
                             @endif
                             @if(($filters['year'] ?? 'ALL') !== 'ALL')
                                 {{ $filters['year'] }}
