@@ -191,6 +191,8 @@ class ReportController extends Controller
     {
         $user = $request->user();
         $search = $request->input('search');
+        $month = $request->input('month');
+        $year = $request->input('year');
 
         // Query: Ambil Debt yang belum lunas (remaining > 0) dengan relasi detail
         $query = Debt::where('user_id', $user->id)
@@ -201,6 +203,14 @@ class ReportController extends Controller
             $query->whereHas('contact', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%");
             });
+        }
+
+        if ($month && $month !== 'ALL') {
+            $query->whereMonth('created_at', $month);
+        }
+
+        if ($year && $year !== 'ALL') {
+            $query->whereYear('created_at', $year);
         }
 
         $allDebts = $query->latest()->get();
@@ -225,25 +235,40 @@ class ReportController extends Controller
         return Inertia::render('Reports/DebtSummary', [
             'payables' => $results->where('type', 'PAYABLE')->values(),
             'receivables' => $results->where('type', 'RECEIVABLE')->values(),
-            'filters' => ['search' => $search],
+            'filters' => [
+                'search' => $search,
+                'month' => $month ?? 'ALL',
+                'year' => $year ?? 'ALL',
+            ],
         ]);
     }
 
     /**
      * Cetak Detail Hutang/Piutang per Kontak.
      */
-    public function printDebtDetail($contactId, $type)
+    public function printDebtDetail(Request $request, $contactId, $type)
     {
         $user = auth()->user();
         $contact = Contact::where('user_id', $user->id)->findOrFail($contactId);
 
-        $debts = Debt::where('user_id', $user->id)
+        $month = $request->input('month');
+        $year = $request->input('year');
+
+        $query = Debt::where('user_id', $user->id)
             ->where('contact_id', $contactId)
             ->where('type', $type)
             ->where('remaining', '>', 0)
-            ->with(['order.items', 'purchase.items'])
-            ->latest()
-            ->get();
+            ->with(['order.items', 'purchase.items']);
+
+        if ($month && $month !== 'ALL') {
+            $query->whereMonth('created_at', $month);
+        }
+
+        if ($year && $year !== 'ALL') {
+            $query->whereYear('created_at', $year);
+        }
+
+        $debts = $query->latest()->get();
 
         $data = [
             'contact' => $contact,
@@ -251,6 +276,10 @@ class ReportController extends Controller
             'type' => $type,
             'total_remaining' => $debts->sum('remaining'),
             'company_name' => 'Bigger Advertising', // Bisa diambil dari setting jika ada
+            'filters' => [
+                'month' => $month,
+                'year' => $year
+            ]
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.debt_detail', $data);

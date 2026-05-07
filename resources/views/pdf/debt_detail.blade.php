@@ -198,7 +198,17 @@
                 <td width="40%" style="vertical-align: top;" class="text-right">
                     <div class="doc-title">RINGKASAN<br>{{ $type === 'RECEIVABLE' ? 'PIUTANG' : 'HUTANG' }}</div>
                     <div style="margin-top: 5px; font-size: 10pt; opacity: 0.9;">
-                        Detail Transaksi Belum Lunas
+                        @if(($filters['month'] ?? 'ALL') !== 'ALL' || ($filters['year'] ?? 'ALL') !== 'ALL')
+                            Periode: 
+                            @if(($filters['month'] ?? 'ALL') !== 'ALL')
+                                {{ \Carbon\Carbon::create()->month($filters['month'])->translatedFormat('F') }}
+                            @endif
+                            @if(($filters['year'] ?? 'ALL') !== 'ALL')
+                                {{ $filters['year'] }}
+                            @endif
+                        @else
+                            Semua Transaksi Belum Lunas
+                        @endif
                     </div>
                 </td>
             </tr>

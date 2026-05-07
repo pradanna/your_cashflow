@@ -18,6 +18,8 @@ import TextInput from "@/Components/TextInput";
 
 export default function DebtSummary({ auth, payables, receivables, filters }) {
     const [search, setSearch] = useState(filters.search || "");
+    const [month, setMonth] = useState(filters.month || "ALL");
+    const [year, setYear] = useState(filters.year || "ALL");
     const [selectedContact, setSelectedContact] = useState(null);
 
     // Sorting State
@@ -25,6 +27,26 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
         key: "total_remaining",
         direction: "desc",
     });
+
+    // Filter Lists
+    const months = [
+        { value: "ALL", label: "Semua Bulan" },
+        { value: "01", label: "Januari" },
+        { value: "02", label: "Februari" },
+        { value: "03", label: "Maret" },
+        { value: "04", label: "April" },
+        { value: "05", label: "Mei" },
+        { value: "06", label: "Juni" },
+        { value: "07", label: "Juli" },
+        { value: "08", label: "Agustus" },
+        { value: "09", label: "September" },
+        { value: "10", label: "Oktober" },
+        { value: "11", label: "November" },
+        { value: "12", label: "Desember" },
+    ];
+
+    const currentYear = new Date().getFullYear();
+    const years = ["ALL", ...Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString())];
 
     // Handle Search (Debounce)
     const handleSearch = (e) => {
@@ -34,12 +56,28 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
         // Simple debounce
         clearTimeout(window.searchTimeout);
         window.searchTimeout = setTimeout(() => {
-            router.get(
-                route("reports.debt-summary"),
-                { search: value },
-                { preserveState: true, preserveScroll: true, replace: true },
-            );
+            applyFilters({ search: value, month, year });
         }, 300);
+    };
+
+    const applyFilters = (newFilters) => {
+        router.get(
+            route("reports.debt-summary"),
+            newFilters,
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+
+    const handleMonthChange = (e) => {
+        const val = e.target.value;
+        setMonth(val);
+        applyFilters({ search, month: val, year });
+    };
+
+    const handleYearChange = (e) => {
+        const val = e.target.value;
+        setYear(val);
+        applyFilters({ search, month, year: val });
     };
 
     // Sorting Logic
@@ -123,7 +161,7 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
             <div className="py-6">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                     {/* Filter Section */}
-                    <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+                    <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row items-center gap-4">
                         <div className="relative w-full max-w-md">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <Search size={18} className="text-gray-400" />
@@ -135,6 +173,32 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
                                 value={search}
                                 onChange={handleSearch}
                             />
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                            <select
+                                value={month}
+                                onChange={handleMonthChange}
+                                className="border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm w-full md:w-40"
+                            >
+                                {months.map((m) => (
+                                    <option key={m.value} value={m.value}>
+                                        {m.label}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <select
+                                value={year}
+                                onChange={handleYearChange}
+                                className="border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm w-full md:w-32"
+                            >
+                                {years.map((y) => (
+                                    <option key={y} value={y}>
+                                        {y === "ALL" ? "Semua Tahun" : y}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
@@ -471,6 +535,8 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
                                     href={route("reports.debt-summary.print", {
                                         contactId: selectedContact.contact_id,
                                         type: selectedContact.type,
+                                        month: month,
+                                        year: year
                                     })}
                                     target="_blank"
                                     className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
