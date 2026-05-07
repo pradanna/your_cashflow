@@ -190,7 +190,7 @@ export default function OrderIndex({
         setEditingOrder(order);
         setData({
             contact_id: order.contact_id || "",
-            transaction_date: order.transaction_date,
+            transaction_date: order.transaction_date ? order.transaction_date.split('T')[0] : '',
             status: order.status,
             note: order.note || "",
             // Ambil account/category dari relasi transaction jika ada (dan status PAID)
