@@ -198,17 +198,8 @@
                 <td width="40%" style="vertical-align: top;" class="text-right">
                     <div class="doc-title">RINGKASAN<br>{{ $type === 'RECEIVABLE' ? 'PIUTANG' : 'HUTANG' }}</div>
                     <div style="margin-top: 5px; font-size: 10pt; opacity: 0.9;">
-                        @if(($filters['month'] ?? 'ALL') !== 'ALL' || ($filters['year'] ?? 'ALL') !== 'ALL')
-                            Periode: 
-                            @if(($filters['month'] ?? 'ALL') !== 'ALL')
-                                {{ \Carbon\Carbon::create()->month((int)$filters['month'])->translatedFormat('F') }}
-                            @endif
-                            @if(($filters['year'] ?? 'ALL') !== 'ALL')
-                                {{ $filters['year'] }}
-                            @endif
-                        @else
-                            Semua Transaksi Belum Lunas
-                        @endif
+                        Periode:<br>
+                        {{ \Carbon\Carbon::parse($filters['date_start'])->translatedFormat('d F Y') }} s/d {{ \Carbon\Carbon::parse($filters['date_end'])->translatedFormat('d F Y') }}
                     </div>
                 </td>
             </tr>
@@ -295,11 +286,26 @@
 
         <table class="total-table">
             <tr>
-                <td width="60%"></td>
-                <td width="40%" style="vertical-align: top;">
+                <td width="50%"></td>
+                <td width="50%" style="vertical-align: top;">
                     <table width="100%">
                         <tr>
-                            <td class="text-right total-label">TOTAL {{ $type === 'RECEIVABLE' ? 'PIUTANG' : 'HUTANG' }}</td>
+                            <td class="text-right" style="padding: 5px 0; color: #555;">Subtotal {{ $type === 'RECEIVABLE' ? 'Tagihan' : 'Hutang' }}</td>
+                            <td class="text-right" style="padding: 5px 0;">
+                                Rp {{ number_format($total_amount, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-right" style="padding: 5px 0; color: #555;">Total Dibayar</td>
+                            <td class="text-right text-green" style="padding: 5px 0;">
+                                - Rp {{ number_format($total_paid, 0, ',', '.') }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="border-bottom: 1px solid #ddd;"></td>
+                        </tr>
+                        <tr>
+                            <td class="text-right total-label">SISA {{ $type === 'RECEIVABLE' ? 'PIUTANG' : 'HUTANG' }}</td>
                             <td class="text-right total-amount">
                                 Rp {{ number_format($total_remaining, 0, ',', '.') }}
                             </td>

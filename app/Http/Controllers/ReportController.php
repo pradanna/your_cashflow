@@ -191,8 +191,8 @@ class ReportController extends Controller
     {
         $user = $request->user();
         $search = $request->input('search');
-        $month = $request->input('month');
-        $year = $request->input('year');
+        $dateStart = $request->input('date_start', now()->startOfMonth()->format('Y-m-d'));
+        $dateEnd = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
 
         // Query: Ambil Debt yang belum lunas (remaining > 0) dengan relasi detail
         $query = Debt::where('user_id', $user->id)
@@ -205,13 +205,7 @@ class ReportController extends Controller
             });
         }
 
-        if ($month && $month !== 'ALL') {
-            $query->whereMonth('created_at', $month);
-        }
-
-        if ($year && $year !== 'ALL') {
-            $query->whereYear('created_at', $year);
-        }
+        $query->whereBetween(DB::raw('DATE(created_at)'), [$dateStart, $dateEnd]);
 
         $allDebts = $query->latest()->get();
 
@@ -237,8 +231,8 @@ class ReportController extends Controller
             'receivables' => $results->where('type', 'RECEIVABLE')->values(),
             'filters' => [
                 'search' => $search,
-                'month' => $month ?? 'ALL',
-                'year' => $year ?? 'ALL',
+                'date_start' => $dateStart,
+                'date_end' => $dateEnd,
             ],
         ]);
     }
@@ -251,8 +245,8 @@ class ReportController extends Controller
         $user = auth()->user();
         $contact = Contact::where('user_id', $user->id)->findOrFail($contactId);
 
-        $month = $request->input('month');
-        $year = $request->input('year');
+        $dateStart = $request->input('date_start', now()->startOfMonth()->format('Y-m-d'));
+        $dateEnd = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
 
         $query = Debt::where('user_id', $user->id)
             ->where('contact_id', $contactId)
@@ -260,13 +254,7 @@ class ReportController extends Controller
             ->where('remaining', '>', 0)
             ->with(['order.items', 'purchase.items']);
 
-        if ($month && $month !== 'ALL') {
-            $query->whereMonth('created_at', $month);
-        }
-
-        if ($year && $year !== 'ALL') {
-            $query->whereYear('created_at', $year);
-        }
+        $query->whereBetween(DB::raw('DATE(created_at)'), [$dateStart, $dateEnd]);
 
         $debts = $query->latest()->get();
 
@@ -274,11 +262,13 @@ class ReportController extends Controller
             'contact' => $contact,
             'debts' => $debts,
             'type' => $type,
+            'total_amount' => $debts->sum('amount'),
+            'total_paid' => $debts->sum('amount') - $debts->sum('remaining'),
             'total_remaining' => $debts->sum('remaining'),
             'company_name' => 'Bigger Advertising', // Bisa diambil dari setting jika ada
             'filters' => [
-                'month' => $month,
-                'year' => $year
+                'date_start' => $dateStart,
+                'date_end' => $dateEnd
             ]
         ];
 

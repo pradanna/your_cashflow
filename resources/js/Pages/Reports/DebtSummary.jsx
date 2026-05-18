@@ -18,8 +18,12 @@ import TextInput from "@/Components/TextInput";
 
 export default function DebtSummary({ auth, payables, receivables, filters }) {
     const [search, setSearch] = useState(filters.search || "");
-    const [month, setMonth] = useState(filters.month || "ALL");
-    const [year, setYear] = useState(filters.year || "ALL");
+    const [dateStart, setDateStart] = useState(
+        filters.date_start || new Date().toISOString().slice(0, 10),
+    );
+    const [dateEnd, setDateEnd] = useState(
+        filters.date_end || new Date().toISOString().slice(0, 10),
+    );
     const [selectedContact, setSelectedContact] = useState(null);
 
     // Sorting State
@@ -28,25 +32,7 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
         direction: "desc",
     });
 
-    // Filter Lists
-    const months = [
-        { value: "ALL", label: "Semua Bulan" },
-        { value: "01", label: "Januari" },
-        { value: "02", label: "Februari" },
-        { value: "03", label: "Maret" },
-        { value: "04", label: "April" },
-        { value: "05", label: "Mei" },
-        { value: "06", label: "Juni" },
-        { value: "07", label: "Juli" },
-        { value: "08", label: "Agustus" },
-        { value: "09", label: "September" },
-        { value: "10", label: "Oktober" },
-        { value: "11", label: "November" },
-        { value: "12", label: "Desember" },
-    ];
-
-    const currentYear = new Date().getFullYear();
-    const years = ["ALL", ...Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString())];
+    // No longer using month/year lists
 
     // Handle Search (Debounce)
     const handleSearch = (e) => {
@@ -56,7 +42,7 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
         // Simple debounce
         clearTimeout(window.searchTimeout);
         window.searchTimeout = setTimeout(() => {
-            applyFilters({ search: value, month, year });
+            applyFilters({ search: value, date_start: dateStart, date_end: dateEnd });
         }, 300);
     };
 
@@ -68,16 +54,16 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
         );
     };
 
-    const handleMonthChange = (e) => {
+    const handleDateStartChange = (e) => {
         const val = e.target.value;
-        setMonth(val);
-        applyFilters({ search, month: val, year });
+        setDateStart(val);
+        applyFilters({ search, date_start: val, date_end: dateEnd });
     };
 
-    const handleYearChange = (e) => {
+    const handleDateEndChange = (e) => {
         const val = e.target.value;
-        setYear(val);
-        applyFilters({ search, month, year: val });
+        setDateEnd(val);
+        applyFilters({ search, date_start: dateStart, date_end: val });
     };
 
     // Sorting Logic
@@ -176,29 +162,19 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
                         </div>
 
                         <div className="flex items-center gap-2 w-full md:w-auto">
-                            <select
-                                value={month}
-                                onChange={handleMonthChange}
-                                className="border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm w-full md:w-40"
-                            >
-                                {months.map((m) => (
-                                    <option key={m.value} value={m.value}>
-                                        {m.label}
-                                    </option>
-                                ))}
-                            </select>
-
-                            <select
-                                value={year}
-                                onChange={handleYearChange}
-                                className="border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm w-full md:w-32"
-                            >
-                                {years.map((y) => (
-                                    <option key={y} value={y}>
-                                        {y === "ALL" ? "Semua Tahun" : y}
-                                    </option>
-                                ))}
-                            </select>
+                            <TextInput
+                                type="date"
+                                className="w-full md:w-40"
+                                value={dateStart}
+                                onChange={handleDateStartChange}
+                            />
+                            <span className="text-gray-500">s/d</span>
+                            <TextInput
+                                type="date"
+                                className="w-full md:w-40"
+                                value={dateEnd}
+                                onChange={handleDateEndChange}
+                            />
                         </div>
                     </div>
 
@@ -535,8 +511,8 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
                                     href={route("reports.debt-summary.print", {
                                         contactId: selectedContact.contact_id,
                                         type: selectedContact.type,
-                                        month: month,
-                                        year: year
+                                        date_start: dateStart,
+                                        date_end: dateEnd
                                     })}
                                     target="_blank"
                                     className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
