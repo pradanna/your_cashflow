@@ -49,7 +49,6 @@ export default function StockIndex({
         unit: "",
         qty: "",
         selling_price: "",
-        selling_price: "",
     });
 
     const editForm = useForm({

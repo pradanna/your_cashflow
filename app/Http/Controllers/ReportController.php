@@ -194,9 +194,8 @@ class ReportController extends Controller
         $dateStart = $request->input('date_start', now()->startOfMonth()->format('Y-m-d'));
         $dateEnd = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
 
-        // Query: Ambil Debt yang belum lunas (remaining > 0) dengan relasi detail
+        // Query: Ambil semua Debt (termasuk yang lunas) dalam rentang tanggal
         $query = Debt::where('user_id', $user->id)
-            ->where('remaining', '>', 0)
             ->with(['contact', 'order.items', 'purchase.items']);
 
         if ($search) {
@@ -251,7 +250,6 @@ class ReportController extends Controller
         $query = Debt::where('user_id', $user->id)
             ->where('contact_id', $contactId)
             ->where('type', $type)
-            ->where('remaining', '>', 0)
             ->with(['order.items', 'purchase.items']);
 
         $query->whereBetween(DB::raw('DATE(created_at)'), [$dateStart, $dateEnd]);
