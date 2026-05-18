@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
     // Orders Routes
 
     Route::resource('accounts', AccountController::class);
+    Route::post('/accounts/{account}/adjust', [AccountController::class, 'adjust'])->name('accounts.adjust');
     Route::resource('contacts', ContactController::class);
     Route::resource('catalogs', CatalogController::class)
         ->except(['store', 'create', 'edit', 'update', 'destroy']);

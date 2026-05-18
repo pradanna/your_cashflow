@@ -1,7 +1,7 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, useForm } from "@inertiajs/react";
 import { useState } from "react";
-import { Wallet, Plus, Pencil, Trash2, CreditCard, X } from "lucide-react";
+import { Wallet, Plus, Pencil, Trash2, CreditCard, X, Settings } from "lucide-react";
 import Card from "@/Components/UI/Card";
 import Modal from "@/Components/Modal";
 import InputLabel from "@/Components/InputLabel";
@@ -19,11 +19,13 @@ export default function AccountIndex({ auth, accounts, totalBalance }) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [isAdjustOpen, setIsAdjustOpen] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState(null);
 
     // --- FORMS (Inertia useForm) ---
     const createForm = useForm({ name: "", initial_balance: "" });
     const editForm = useForm({ name: "" });
+    const adjustForm = useForm({ real_balance: "" });
     const deleteForm = useForm({});
 
     // --- HANDLERS ---
@@ -47,6 +49,22 @@ export default function AccountIndex({ auth, accounts, totalBalance }) {
         e.preventDefault();
         editForm.put(route("accounts.update", selectedAccount.id), {
             onSuccess: () => setIsEditOpen(false),
+        });
+    };
+
+    const openAdjust = (account) => {
+        setSelectedAccount(account);
+        adjustForm.setData("real_balance", account.balance);
+        setIsAdjustOpen(true);
+    };
+
+    const handleAdjust = (e) => {
+        e.preventDefault();
+        adjustForm.post(route("accounts.adjust", selectedAccount.id), {
+            onSuccess: () => {
+                setIsAdjustOpen(false);
+                adjustForm.reset();
+            },
         });
     };
 
@@ -111,6 +129,13 @@ export default function AccountIndex({ auth, accounts, totalBalance }) {
 
                                     {/* Action Buttons (Hover Only) */}
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        <button
+                                            onClick={() => openAdjust(account)}
+                                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                            title="Penyesuaian Saldo"
+                                        >
+                                            <Settings size={16} />
+                                        </button>
                                         <button
                                             onClick={() => openEdit(account)}
                                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -302,7 +327,73 @@ export default function AccountIndex({ auth, accounts, totalBalance }) {
                 </div>
             </Modal>
 
-            {/* 3. Modal Hapus */}
+            {/* 3. Modal Penyesuaian */}
+            <Modal
+                show={isAdjustOpen}
+                onClose={() => setIsAdjustOpen(false)}
+                closeable={false}
+            >
+                <div className="p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-lg font-bold text-gray-900">
+                            Penyesuaian Saldo Kas
+                        </h2>
+                        <button
+                            onClick={() => setIsAdjustOpen(false)}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <p className="text-sm text-gray-600 mb-4">
+                        Masukkan nominal uang nyata (real) yang ada di{" "}
+                        <strong>{selectedAccount?.name}</strong> saat ini. Sistem akan
+                        otomatis mencatat transaksi penyesuaian untuk menyamakan saldo.
+                    </p>
+
+                    <form onSubmit={handleAdjust} className="space-y-4">
+                        <div>
+                            <InputLabel htmlFor="real_balance" value="Saldo Nyata Saat Ini (Rp)" />
+                            <TextInput
+                                id="real_balance"
+                                type="number"
+                                value={adjustForm.data.real_balance}
+                                onChange={(e) =>
+                                    adjustForm.setData("real_balance", e.target.value)
+                                }
+                                className="mt-1 block w-full text-lg font-bold text-gray-900"
+                                placeholder="0"
+                                isFocused
+                            />
+                            <InputError
+                                message={adjustForm.errors.real_balance}
+                                className="mt-2"
+                            />
+                            <div className="mt-2 text-sm text-gray-500">
+                                Saldo tercatat sistem saat ini:{" "}
+                                <span className="font-bold text-gray-700">
+                                    {selectedAccount ? formatRupiah(selectedAccount.balance) : 0}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6">
+                            <SecondaryButton onClick={() => setIsAdjustOpen(false)}>
+                                Batal
+                            </SecondaryButton>
+                            <PrimaryButton
+                                className="bg-red-600 hover:bg-red-700"
+                                disabled={adjustForm.processing}
+                            >
+                                Sesuaikan Saldo
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+
+            {/* 4. Modal Hapus */}
             <Modal
                 show={isDeleteOpen}
                 onClose={() => setIsDeleteOpen(false)}

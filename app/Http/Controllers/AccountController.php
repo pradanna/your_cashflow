@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\Transaction;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -79,5 +80,47 @@ class AccountController extends Controller
         $account->delete();
 
         return redirect()->back()->with('success', 'Akun dihapus.');
+    }
+
+    public function adjust(Request $request, Account $account)
+    {
+        if ($account->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'real_balance' => 'required|numeric|min:0',
+        ]);
+
+        $realBalance = $validated['real_balance'];
+        $currentBalance = $account->balance;
+        $diff = $realBalance - $currentBalance;
+
+        if ($diff == 0) {
+            return redirect()->back()->with('info', 'Saldo sudah sesuai, tidak ada penyesuaian.');
+        }
+
+        $type = $diff > 0 ? 'INCOME' : 'EXPENSE';
+        $amount = abs($diff);
+
+        // Cari atau buat kategori PENYESUAIAN
+        $category = Category::firstOrCreate(
+            ['user_id' => $request->user()->id, 'name' => 'PENYESUAIAN', 'type' => $type],
+            ['name' => 'PENYESUAIAN', 'type' => $type]
+        );
+
+        DB::transaction(function () use ($request, $account, $type, $amount, $category) {
+            Transaction::create([
+                'user_id' => $request->user()->id,
+                'account_id' => $account->id,
+                'category_id' => $category->id,
+                'type' => $type,
+                'amount' => $amount,
+                'transaction_date' => now(),
+                'description' => 'Penyesuaian Saldo Kas',
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Saldo berhasil disesuaikan.');
     }
 }
