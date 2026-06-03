@@ -27,8 +27,11 @@ class DebtController extends Controller
         $show = $request->input('show', 'paginate');
 
         $query = Debt::query()
-            ->where('user_id', $user->id)
-            ->where('type', $type)
+            ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
+            ->leftJoin('purchases', 'debts.purchase_id', '=', 'purchases.id')
+            ->select('debts.*')
+            ->where('debts.user_id', $user->id)
+            ->where('debts.type', $type)
             ->with(['contact', 'order', 'purchase']);
 
         // Filter: Search by Contact Name
@@ -42,16 +45,15 @@ class DebtController extends Controller
         if ($status !== 'ALL') {
             if ($status === 'UNPAID') {
                 // "Belum Lunas" mencakup UNPAID dan PARTIAL
-                $query->whereIn('status', ['UNPAID', 'PARTIAL']);
+                $query->whereIn('debts.status', ['UNPAID', 'PARTIAL']);
             } else {
                 // Untuk 'PAID'
-                $query->where('status', $status);
+                $query->where('debts.status', $status);
             }
         }
 
-        // Filter: Date Range (based on created_at)
-        $query->whereDate('created_at', '>=', $startDate)
-            ->whereDate('created_at', '<=', $endDate);
+        // Filter: Date Range (based on transaction_date / created_at)
+        $query->whereBetween(DB::raw('COALESCE(orders.transaction_date, purchases.transaction_date, DATE(debts.created_at))'), [$startDate, $endDate]);
 
         // Sorting
         if ($sortBy === 'contact_name') {
@@ -59,7 +61,7 @@ class DebtController extends Controller
                 ->orderBy('contacts.name', $sortDir)
                 ->select('debts.*'); // Hindari ambiguitas kolom
         } else {
-            $query->orderBy($sortBy, $sortDir);
+            $query->orderBy('debts.' . $sortBy, $sortDir);
         }
 
         $perPage = $show === 'all' ? 1000 : 15;

@@ -580,20 +580,7 @@ export default function DebtIndex({
                                                     "Manual"}
                                             </td>
                                             <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
-                                                {debt.order?.transaction_date
-                                                    ? formatDate(
-                                                          debt.order
-                                                              .transaction_date,
-                                                      )
-                                                    : debt.purchase
-                                                            ?.transaction_date
-                                                      ? formatDate(
-                                                            debt.purchase
-                                                                .transaction_date,
-                                                        )
-                                                      : formatDate(
-                                                            debt.created_at,
-                                                        )}
+                                                {formatDate(debt.transaction_date)}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600">
                                                 {formatRupiah(debt.amount)}

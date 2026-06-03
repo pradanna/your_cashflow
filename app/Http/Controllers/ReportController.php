@@ -32,11 +32,15 @@ class ReportController extends Controller
             ->get()
             ->groupBy(fn($item) => substr($item->transaction_date, 0, 10));
 
-        // 3. Ambil Hutang/Piutang dalam periode (Group by Created Date)
-        $debts = Debt::where('user_id', $user->id)
-            ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+        // 3. Ambil Hutang/Piutang dalam periode (Group by Transaction Date)
+        $debts = Debt::where('debts.user_id', $user->id)
+            ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
+            ->leftJoin('purchases', 'debts.purchase_id', '=', 'purchases.id')
+            ->select('debts.*')
+            ->with(['order', 'purchase'])
+            ->whereBetween(DB::raw('COALESCE(orders.transaction_date, purchases.transaction_date, DATE(debts.created_at))'), [$startDate, $endDate])
             ->get()
-            ->groupBy(fn($item) => $item->created_at->format('Y-m-d'));
+            ->groupBy(fn($item) => $item->transaction_date);
 
         // 4. Loop setiap hari dalam periode untuk menyusun laporan
         $period = CarbonPeriod::create($startDate, $endDate);
@@ -83,14 +87,17 @@ class ReportController extends Controller
         $status = $request->input('status', 'ALL'); // ALL, UNPAID, PARTIAL, PAID
         $type = $request->input('type', 'ALL'); // ALL, PAYABLE, RECEIVABLE
 
-        $query = Debt::where('user_id', $user->id)
+        $query = Debt::where('debts.user_id', $user->id)
+            ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
+            ->leftJoin('purchases', 'debts.purchase_id', '=', 'purchases.id')
+            ->select('debts.*')
             ->with(['contact', 'order', 'purchase'])
-            ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate]);
+            ->whereBetween(DB::raw('COALESCE(orders.transaction_date, purchases.transaction_date, DATE(debts.created_at))'), [$startDate, $endDate]);
 
-        if ($status !== 'ALL') $query->where('status', $status);
-        if ($type !== 'ALL') $query->where('type', $type);
+        if ($status !== 'ALL') $query->where('debts.status', $status);
+        if ($type !== 'ALL') $query->where('debts.type', $type);
 
-        $debts = $query->latest()->get();
+        $debts = $query->latest('debts.created_at')->get();
 
         return Inertia::render('Reports/DebtHistory', [
             'debts' => $debts,
@@ -119,12 +126,14 @@ class ReportController extends Controller
             $contact = $customers->find($contactId);
 
             // Ambil piutang (Receivable) dalam periode
-            $invoices = Debt::where('user_id', $user->id)
-                ->where('contact_id', $contactId)
-                ->where('type', 'RECEIVABLE')
-                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+            $invoices = Debt::where('debts.user_id', $user->id)
+                ->where('debts.contact_id', $contactId)
+                ->where('debts.type', 'RECEIVABLE')
+                ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
+                ->select('debts.*')
+                ->whereBetween(DB::raw('COALESCE(orders.transaction_date, DATE(debts.created_at))'), [$startDate, $endDate])
                 ->with(['order.items'])
-                ->orderBy('created_at')
+                ->orderBy('debts.created_at')
                 ->get();
 
             $statement = [
@@ -162,12 +171,14 @@ class ReportController extends Controller
             abort(404);
         }
 
-        $invoices = Debt::where('user_id', $user->id)
-            ->where('contact_id', $contactId)
-            ->where('type', 'RECEIVABLE')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+        $invoices = Debt::where('debts.user_id', $user->id)
+            ->where('debts.contact_id', $contactId)
+            ->where('debts.type', 'RECEIVABLE')
+            ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
+            ->select('debts.*')
+            ->whereBetween(DB::raw('COALESCE(orders.transaction_date, DATE(debts.created_at))'), [$startDate, $endDate])
             ->with(['order.items'])
-            ->orderBy('created_at')
+            ->orderBy('debts.created_at')
             ->get();
 
         $data = [
@@ -195,7 +206,10 @@ class ReportController extends Controller
         $dateEnd = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
 
         // Query: Ambil semua Debt (termasuk yang lunas) dalam rentang tanggal
-        $query = Debt::where('user_id', $user->id)
+        $query = Debt::where('debts.user_id', $user->id)
+            ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
+            ->leftJoin('purchases', 'debts.purchase_id', '=', 'purchases.id')
+            ->select('debts.*')
             ->with(['contact', 'order.items', 'purchase.items']);
 
         if ($search) {
@@ -204,9 +218,9 @@ class ReportController extends Controller
             });
         }
 
-        $query->whereBetween(DB::raw('DATE(created_at)'), [$dateStart, $dateEnd]);
+        $query->whereBetween(DB::raw('COALESCE(orders.transaction_date, purchases.transaction_date, DATE(debts.created_at))'), [$dateStart, $dateEnd]);
 
-        $allDebts = $query->latest()->get();
+        $allDebts = $query->latest('debts.created_at')->get();
 
         // Grouping data manual collection
         $grouped = $allDebts->groupBy(function ($item) {
@@ -247,14 +261,17 @@ class ReportController extends Controller
         $dateStart = $request->input('date_start', now()->startOfMonth()->format('Y-m-d'));
         $dateEnd = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
 
-        $query = Debt::where('user_id', $user->id)
-            ->where('contact_id', $contactId)
-            ->where('type', $type)
+        $query = Debt::where('debts.user_id', $user->id)
+            ->where('debts.contact_id', $contactId)
+            ->where('debts.type', $type)
+            ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
+            ->leftJoin('purchases', 'debts.purchase_id', '=', 'purchases.id')
+            ->select('debts.*')
             ->with(['order.items', 'purchase.items']);
 
-        $query->whereBetween(DB::raw('DATE(created_at)'), [$dateStart, $dateEnd]);
+        $query->whereBetween(DB::raw('COALESCE(orders.transaction_date, purchases.transaction_date, DATE(debts.created_at))'), [$dateStart, $dateEnd]);
 
-        $debts = $query->latest()->get();
+        $debts = $query->latest('debts.created_at')->get();
 
         $data = [
             'contact' => $contact,

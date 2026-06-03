@@ -126,7 +126,7 @@ export default function DebtHistory({ auth, debts, filters }) {
                                         >
                                             <td className="px-6 py-3 whitespace-nowrap text-gray-600">
                                                 {new Date(
-                                                    debt.created_at,
+                                                    debt.transaction_date,
                                                 ).toLocaleDateString("id-ID")}
                                             </td>
                                             <td className="px-6 py-3 font-medium text-gray-900">

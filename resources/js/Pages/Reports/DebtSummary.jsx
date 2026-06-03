@@ -444,7 +444,7 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
                                                 </div>
                                                 <div className="text-xs text-gray-500 mt-0.5">
                                                     {new Date(
-                                                        debt.created_at,
+                                                        debt.transaction_date,
                                                     ).toLocaleDateString(
                                                         "id-ID",
                                                         { dateStyle: "medium" },

@@ -183,7 +183,7 @@ export default function CustomerStatement({
                                             <tr key={inv.id}>
                                                 <td className="px-4 py-3 text-gray-600 align-top">
                                                     {new Date(
-                                                        inv.created_at,
+                                                        inv.transaction_date,
                                                     ).toLocaleDateString(
                                                         "id-ID",
                                                     )}

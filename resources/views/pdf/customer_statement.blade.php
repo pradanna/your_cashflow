@@ -241,7 +241,7 @@
             <tbody>
                 @forelse($invoices as $inv)
                     <tr>
-                        <td>{{ $inv->created_at->format('d/m/Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($inv->transaction_date)->format('d/m/Y') }}</td>
                         <td>
                             <div class="font-bold text-gray-800">
                                 {{ $inv->order ? $inv->order->invoice_number : 'Manual Debt' }}

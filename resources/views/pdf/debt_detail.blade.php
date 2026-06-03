@@ -242,7 +242,7 @@
             <tbody>
                 @foreach($debts as $debt)
                     <tr>
-                        <td>{{ $debt->created_at->format('d/m/Y') }}</td>
+                        <td>{{ \Carbon\Carbon::parse($debt->transaction_date)->format('d/m/Y') }}</td>
                         <td>
                             <div class="font-bold">
                                 {{ $debt->order ? $debt->order->invoice_number : ($debt->purchase ? $debt->purchase->reference_number : 'No Ref') }}
