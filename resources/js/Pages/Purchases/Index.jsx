@@ -950,28 +950,6 @@ export default function PurchaseIndex({
                                     ))}
                             </select>
                         </div>
-                        <div>
-                            <InputLabel value="Satuan (Unit)" />
-                            <select
-                                className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                value={newItem.unit}
-                                onChange={(e) =>
-                                    setNewItem({
-                                        ...newItem,
-                                        unit: e.target.value,
-                                        length: e.target.value === "meteran" ? newItem.length || 1 : 1,
-                                        width: e.target.value === "meteran" ? newItem.width || 1 : 1,
-                                    })
-                                }
-                            >
-                                <option value="">-- Pilih Satuan --</option>
-                                <option value="pcs">pcs</option>
-                                <option value="kg">kg</option>
-                                <option value="box">box</option>
-                                <option value="meteran">meteran</option>
-                                <option value="m">m</option>
-                            </select>
-                        </div>
 
                         {newItem.unit === "meteran" && (
                             <div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
