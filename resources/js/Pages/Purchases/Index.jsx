@@ -244,12 +244,18 @@ export default function PurchaseIndex({
         const selectedItem = supplierItems.find((s) => s.id == selectedId);
 
         if (selectedItem) {
+            let unitVal = selectedItem.unit || "";
+            const normUnit = unitVal.toLowerCase();
+            if (normUnit === "meteran" || normUnit === "meter" || normUnit === "m" || normUnit === "permeter") {
+                unitVal = "meteran";
+            }
+
             setNewItem({
                 ...newItem,
                 item_name: selectedItem.name,
                 base_price: selectedItem.price,
                 price: selectedItem.price,
-                unit: selectedItem.unit || "",
+                unit: unitVal,
                 length: 1,
                 width: 1,
             });
