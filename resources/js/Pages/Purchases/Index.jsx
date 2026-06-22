@@ -89,8 +89,25 @@ export default function PurchaseIndex({
     const [newItem, setNewItem] = useState({
         item_name: "",
         price: "",
+        base_price: "",
         qty: 1,
+        unit: "",
+        length: 1,
+        width: 1,
     });
+
+    // Effect untuk hitung harga meteran otomatis
+    useEffect(() => {
+        if (newItem.unit === "meteran") {
+            const area = parseFloat(newItem.length || 0) * parseFloat(newItem.width || 0);
+            
+            setNewItem(prev => ({
+                ...prev,
+                price: area * parseFloat(prev.base_price || 0)
+            }));
+        }
+    }, [newItem.length, newItem.width, newItem.base_price, newItem.unit]);
+
 
     const isInitialMount = useRef(true);
 
@@ -192,15 +209,28 @@ export default function PurchaseIndex({
             return;
         }
 
+        let finalItemName = newItem.item_name;
+        if (newItem.unit === "meteran") {
+            finalItemName += ` (${newItem.length}x${newItem.width})`;
+        }
+
         const itemToAdd = {
-            item_name: newItem.item_name,
+            item_name: finalItemName,
             qty: Number(newItem.qty),
             price: Number(newItem.price),
         };
 
         setData("items", [...data.items, itemToAdd]);
         setAddItemOpen(false);
-        setNewItem({ item_name: "", price: "", qty: 1 });
+        setNewItem({
+            item_name: "",
+            price: "",
+            base_price: "",
+            qty: 1,
+            unit: "",
+            length: 1,
+            width: 1,
+        });
     };
 
     const handleRemoveItem = (index) => {
@@ -217,13 +247,21 @@ export default function PurchaseIndex({
             setNewItem({
                 ...newItem,
                 item_name: selectedItem.name,
+                base_price: selectedItem.price,
                 price: selectedItem.price,
+                unit: selectedItem.unit || "",
+                length: 1,
+                width: 1,
             });
         } else {
             setNewItem({
                 ...newItem,
                 item_name: "",
+                base_price: "",
                 price: "",
+                unit: "",
+                length: 1,
+                width: 1,
             });
         }
     };
@@ -583,7 +621,7 @@ export default function PurchaseIndex({
                                     }
                                     onChange={(selectedOption) => {
                                         const supplierId = selectedOption ? selectedOption.value : "";
-                                        const supplier = contacts.find(c => c.id == supplierId);
+                                        const supplier = suppliers.find(c => c.id == supplierId);
                                         
                                         setData({
                                             ...data,
@@ -913,6 +951,69 @@ export default function PurchaseIndex({
                             </select>
                         </div>
                         <div>
+                            <InputLabel value="Satuan (Unit)" />
+                            <select
+                                className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
+                                value={newItem.unit}
+                                onChange={(e) =>
+                                    setNewItem({
+                                        ...newItem,
+                                        unit: e.target.value,
+                                        length: e.target.value === "meteran" ? newItem.length || 1 : 1,
+                                        width: e.target.value === "meteran" ? newItem.width || 1 : 1,
+                                    })
+                                }
+                            >
+                                <option value="">-- Pilih Satuan --</option>
+                                <option value="pcs">pcs</option>
+                                <option value="kg">kg</option>
+                                <option value="box">box</option>
+                                <option value="meteran">meteran</option>
+                                <option value="m">m</option>
+                            </select>
+                        </div>
+
+                        {newItem.unit === "meteran" && (
+                            <div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                                <div>
+                                    <InputLabel value="Panjang (m)" className="text-blue-700" />
+                                    <TextInput
+                                        type="number"
+                                        step="0.01"
+                                        className="w-full mt-1"
+                                        value={newItem.length}
+                                        onChange={(e) =>
+                                            setNewItem({
+                                                ...newItem,
+                                                length: e.target.value,
+                                            })
+                                        }
+                                        placeholder="1"
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel value="Lebar (m)" className="text-blue-700" />
+                                    <TextInput
+                                        type="number"
+                                        step="0.01"
+                                        className="w-full mt-1"
+                                        value={newItem.width}
+                                        onChange={(e) =>
+                                            setNewItem({
+                                                ...newItem,
+                                                width: e.target.value,
+                                            })
+                                        }
+                                        placeholder="1"
+                                    />
+                                </div>
+                                <div className="col-span-2 text-[10px] text-blue-500 italic">
+                                    * Luas Area: {parseFloat(newItem.length || 0) * parseFloat(newItem.width || 0)} m²
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
                             <InputLabel value="Nama Item" />
                             <TextInput
                                 className="w-full mt-1"
@@ -929,17 +1030,25 @@ export default function PurchaseIndex({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <InputLabel value="Harga Beli (Satuan)" />
+                                <InputLabel value={newItem.unit === "meteran" ? "Harga per m²" : "Harga Beli (Satuan)"} />
                                 <TextInput
                                     type="number"
                                     className="w-full mt-1"
-                                    value={newItem.price}
-                                    onChange={(e) =>
-                                        setNewItem({
-                                            ...newItem,
-                                            price: e.target.value,
-                                        })
-                                    }
+                                    value={newItem.unit === "meteran" ? newItem.base_price : newItem.price}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (newItem.unit === "meteran") {
+                                            setNewItem({
+                                                ...newItem,
+                                                base_price: val,
+                                            });
+                                        } else {
+                                            setNewItem({
+                                                ...newItem,
+                                                price: val,
+                                            });
+                                        }
+                                    }}
                                     placeholder="0"
                                     required
                                 />
@@ -961,6 +1070,11 @@ export default function PurchaseIndex({
                                 />
                             </div>
                         </div>
+                        {newItem.unit === "meteran" && (
+                            <div className="text-xs text-gray-500 mt-1">
+                                * Total Harga Satuan (Luas Area x Harga): <span className="font-semibold text-red-600">{formatRupiah(newItem.price)}</span>
+                            </div>
+                        )}
                     </div>
                     <div className="flex justify-end gap-3 mt-6">
                         <SecondaryButton
