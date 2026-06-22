@@ -100,7 +100,7 @@ export default function PurchaseIndex({
     useEffect(() => {
         if (newItem.unit === "meteran") {
             const area = parseFloat(newItem.length || 0) * parseFloat(newItem.width || 0);
-            
+
             setNewItem(prev => ({
                 ...prev,
                 price: area * parseFloat(prev.base_price || 0)
@@ -448,11 +448,11 @@ export default function PurchaseIndex({
                                                 {purchase.status === "PAID"
                                                     ? "-"
                                                     : purchase.debt
-                                                      ? formatRupiah(
+                                                        ? formatRupiah(
                                                             purchase.debt
                                                                 .remaining,
                                                         )
-                                                      : formatRupiah(
+                                                        : formatRupiah(
                                                             purchase.grand_total,
                                                         )}
                                             </td>
@@ -463,7 +463,7 @@ export default function PurchaseIndex({
                                                     )}`}
                                                 >
                                                     {purchase.status ===
-                                                    "UNPAID"
+                                                        "UNPAID"
                                                         ? "BELUM LUNAS"
                                                         : purchase.status}
                                                 </span>
@@ -495,18 +495,18 @@ export default function PurchaseIndex({
                                                     </Link>
                                                     {purchase.status !==
                                                         "PAID" && (
-                                                        <button
-                                                            onClick={() =>
-                                                                openPaymentModal(
-                                                                    purchase,
-                                                                )
-                                                            }
-                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
-                                                            title="Bayar Hutang"
-                                                        >
-                                                            <Wallet size={16} />
-                                                        </button>
-                                                    )}
+                                                            <button
+                                                                onClick={() =>
+                                                                    openPaymentModal(
+                                                                        purchase,
+                                                                    )
+                                                                }
+                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                                                                title="Bayar Hutang"
+                                                            >
+                                                                <Wallet size={16} />
+                                                            </button>
+                                                        )}
                                                     <button
                                                         onClick={() =>
                                                             openEditModal(
@@ -561,11 +561,10 @@ export default function PurchaseIndex({
                                     <Link
                                         key={i}
                                         href={link.url || "#"}
-                                        className={`px-3 py-1 rounded-lg text-sm ${
-                                            link.active
+                                        className={`px-3 py-1 rounded-lg text-sm ${link.active
                                                 ? "bg-red-600 text-white"
                                                 : "text-gray-600 hover:bg-gray-100"
-                                        } ${!link.url && "opacity-50 cursor-not-allowed"}`}
+                                            } ${!link.url && "opacity-50 cursor-not-allowed"}`}
                                         dangerouslySetInnerHTML={{
                                             __html: link.label,
                                         }}
@@ -622,7 +621,7 @@ export default function PurchaseIndex({
                                     onChange={(selectedOption) => {
                                         const supplierId = selectedOption ? selectedOption.value : "";
                                         const supplier = suppliers.find(c => c.id == supplierId);
-                                        
+
                                         setData({
                                             ...data,
                                             contact_id: supplierId,
@@ -844,7 +843,7 @@ export default function PurchaseIndex({
                                                             <td className="px-4 py-2 text-right font-medium">
                                                                 {formatRupiah(
                                                                     item.price *
-                                                                        item.qty,
+                                                                    item.qty,
                                                                 )}
                                                             </td>
                                                             <td className="px-4 py-2 text-center">
