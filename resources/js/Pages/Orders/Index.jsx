@@ -18,14 +18,12 @@ import {
 } from "lucide-react";
 import { formatRupiah } from "@/Utils/format";
 import { getStatusBadge } from "@/Utils/badge";
-import Modal from "@/Components/Modal";
-import InputLabel from "@/Components/InputLabel";
-import TextInput from "@/Components/TextInput";
-import InputError from "@/Components/InputError";
-import PrimaryButton from "@/Components/PrimaryButton";
-import SecondaryButton from "@/Components/SecondaryButton";
-import DangerButton from "@/Components/DangerButton";
-import Select from "react-select";
+import OrderFormModal from "./Partials/OrderFormModal";
+import AddItemModal from "./Partials/AddItemModal";
+import PurchaseModal from "./Partials/PurchaseModal";
+import DeleteOrderModal from "./Partials/DeleteOrderModal";
+import PaymentModal from "./Partials/PaymentModal";
+
 export default function OrderIndex({
     orders,
     filters,
@@ -37,6 +35,9 @@ export default function OrderIndex({
     stocks,
     supplierItems,
 }) {
+    const { props } = usePage();
+    const isOwner = props.auth?.user?.role !== "karyawan";
+
     // State untuk filter
     const [search, setSearch] = useState(filters.search || "");
     const [status, setStatus] = useState(filters.status || "");
@@ -109,7 +110,6 @@ export default function OrderIndex({
         qty: 1,
     });
 
-    // State Temporary Item (untuk form tambah item)
     const [newItem, setNewItem] = useState({
         item_id: "",
         item_name: "",
@@ -122,7 +122,7 @@ export default function OrderIndex({
         unit: "",
         length: 1,
         width: 1,
-        purchase_status: "PAID",
+        purchase_status: "UNPAID",
         purchase_amount: 0,
     });
 
@@ -243,7 +243,7 @@ export default function OrderIndex({
                               supplier_id: newItem.supplier_id || "",
                               qty: newItem.qty,
                               amount: newItem.purchase_amount || (newItem.purchase_price * newItem.qty),
-                              status: newItem.purchase_status || "PAID",
+                              status: "UNPAID",
                           },
                       ]
                     : data.linked_purchases,
@@ -263,6 +263,8 @@ export default function OrderIndex({
             unit: "",
             length: 1,
             width: 1,
+            purchase_status: "UNPAID",
+            purchase_amount: 0,
         });
     };
 
@@ -307,16 +309,21 @@ export default function OrderIndex({
 
             const autoSupplier = suppliers.find(s => s.id == autoSupplierId);
 
+            // Cek apakah customer yang dipilih adalah employee
+            const selectedContact = contacts.find(c => c.id == data.contact_id);
+            const isEmployee = selectedContact && selectedContact.type === 'EMPLOYEE';
+            const priceToUse = isEmployee && parseFloat(selectedItem.purchase_price) > 0 ? selectedItem.purchase_price : selectedItem.price;
+
             setNewItem({
                 ...newItem,
                 item_id: String(selectedId),
                 item_name: selectedItem.name,
-                base_price: selectedItem.price,
-                price: selectedItem.price,
+                base_price: priceToUse,
+                price: priceToUse,
                 base_purchase_price: selectedItem.purchase_price || "",
                 purchase_price: selectedItem.purchase_price || "",
                 supplier_id: autoSupplierId ? String(autoSupplierId) : "",
-                purchase_status: autoSupplier ? autoSupplier.default_payment_status : "PAID",
+                purchase_status: "UNPAID",
                 unit: selectedItem.unit || "",
                 length: 1,
                 width: 1,
@@ -435,7 +442,7 @@ export default function OrderIndex({
 
     const contactOptions = contacts.map((contact) => ({
         value: contact.id,
-        label: contact.name,
+        label: contact.type === 'EMPLOYEE' ? `${contact.name} (Employee)` : contact.name,
     }));
 
     return (
@@ -756,1248 +763,78 @@ export default function OrderIndex({
                 </div>
             </div>
 
-            {/* --- MODAL CREATE ORDER --- */}
-            <Modal
+            <OrderFormModal
                 show={isCreateOpen}
                 onClose={() => setCreateOpen(false)}
-                maxWidth="7xl"
-                closeable={false}
-            >
-                <form onSubmit={handleSubmitOrder} className="p-6">
-                    <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-                        <h2 className="text-xl font-bold text-gray-900">
-                            {editingOrder ? "Edit Order" : "Buat Order Baru"}
-                        </h2>
-                        <button
-                            type="button"
-                            onClick={() => setCreateOpen(false)}
-                            className="text-gray-400 hover:text-gray-600"
-                        >
-                            <X size={24} />
-                        </button>
-                    </div>
+                isOwner={isOwner}
+                editingOrder={editingOrder}
+                handleSubmitOrder={handleSubmitOrder}
+                data={data}
+                setData={setData}
+                errors={errors}
+                processing={processing}
+                contactOptions={contactOptions}
+                contacts={contacts}
+                items={items}
+                accounts={accounts}
+                categories={categories}
+                suppliers={suppliers}
+                setAddItemOpen={setAddItemOpen}
+                handleRemoveItem={handleRemoveItem}
+                handleRemoveLinkedPurchase={handleRemoveLinkedPurchase}
+                grandTotal={grandTotal}
+                formatRupiah={formatRupiah}
+            />
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* KIRI: Informasi Order */}
-                        <div className="space-y-5">
-                            <h3 className="font-semibold text-gray-700 border-b pb-2">
-                                Informasi Transaksi
-                            </h3>
-
-                            <div>
-                                <InputLabel value="Pelanggan" />
-                                <Select
-                                    className="mt-1"
-                                    classNamePrefix="react-select" // Berguna untuk styling custom
-                                    options={contactOptions}
-                                    // Cari objek yang value-nya sama dengan data.contact_id agar label tetap muncul
-                                    value={contactOptions.find(
-                                        (opt) => opt.value === data.contact_id,
-                                    )}
-                                    onChange={(selectedOption) => {
-                                        const contactId = selectedOption ? selectedOption.value : "";
-                                        const contact = contacts.find(c => c.id == contactId);
-                                        
-                                        setData({
-                                            ...data,
-                                            contact_id: contactId,
-                                            status: contact ? contact.default_payment_status : "PAID"
-                                        });
-                                    }}
-                                    placeholder="-- Pilih Pelanggan --"
-                                    isClearable // Agar bisa dikosongkan (tombol X)
-                                    isSearchable // Fitur pencarian otomatis
-                                />
-                                <InputError
-                                    message={errors.contact_id}
-                                    className="mt-2"
-                                />
-                                <InputError
-                                    message={errors.contact_id}
-                                    className="mt-2"
-                                />
-                            </div>
-
-                            <div>
-                                <InputLabel value="No. Invoice" />
-                                <TextInput
-                                    className="w-full mt-1 bg-gray-100 text-gray-500 cursor-not-allowed"
-                                    value={
-                                        editingOrder
-                                            ? editingOrder.invoice_number
-                                            : "Otomatis (INV/...)"
-                                    }
-                                    disabled
-                                />
-                                <p
-                                    className="text-xs text-gray-400 mt-1"
-                                    hidden={!!editingOrder}
-                                >
-                                    Nomor invoice akan digenerate otomatis oleh
-                                    sistem.
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <InputLabel value="Tanggal Transaksi" />
-                                    <TextInput
-                                        type="date"
-                                        className="w-full mt-1"
-                                        value={data.transaction_date}
-                                        onChange={(e) =>
-                                            setData(
-                                                "transaction_date",
-                                                e.target.value,
-                                            )
-                                        }
-                                        required
-                                    />
-                                    <InputError
-                                        message={errors.transaction_date}
-                                        className="mt-2"
-                                    />
-                                </div>
-                                <div>
-                                    <InputLabel value="Status Pembayaran" />
-                                    <select
-                                        className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                        value={data.status}
-                                        onChange={(e) =>
-                                            setData("status", e.target.value)
-                                        }
-                                    >
-                                        <option value="PAID">Lunas</option>
-                                        <option value="UNPAID">
-                                            Piutang (Belum Lunas)
-                                        </option>
-                                    </select>
-                                    <InputError
-                                        message={errors.status}
-                                        className="mt-2"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Conditional Input: Jika Lunas, pilih Akun & Kategori */}
-                            {data.status === "PAID" && (
-                                <div className="grid grid-cols-2 gap-4 bg-green-50 p-4 rounded-lg border border-green-100">
-                                    <div className="col-span-2">
-                                        <p className="text-xs font-bold text-green-700 mb-2 uppercase tracking-wider">
-                                            Detail Pembayaran Masuk
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Masuk ke Akun" />
-                                        <select
-                                            className="w-full mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm text-sm"
-                                            value={data.account_id}
-                                            onChange={(e) =>
-                                                setData(
-                                                    "account_id",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            required
-                                        >
-                                            <option value="">
-                                                -- Pilih Akun --
-                                            </option>
-                                            {accounts.map((acc) => (
-                                                <option
-                                                    key={acc.id}
-                                                    value={acc.id}
-                                                >
-                                                    {acc.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError
-                                            message={errors.account_id}
-                                            className="mt-1"
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Kategori Pemasukan" />
-                                        <select
-                                            className="w-full mt-1 border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm text-sm"
-                                            value={data.category_id}
-                                            onChange={(e) =>
-                                                setData(
-                                                    "category_id",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            required
-                                        >
-                                            <option value="">
-                                                -- Pilih Kategori --
-                                            </option>
-                                            {categories.map((cat) => (
-                                                <option
-                                                    key={cat.id}
-                                                    value={cat.id}
-                                                >
-                                                    {cat.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError
-                                            message={errors.category_id}
-                                            className="mt-1"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            <div>
-                                <InputLabel value="Catatan (Opsional)" />
-                                <textarea
-                                    className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                    rows="3"
-                                    value={data.note}
-                                    onChange={(e) =>
-                                        setData("note", e.target.value)
-                                    }
-                                    placeholder="Catatan tambahan untuk order ini..."
-                                ></textarea>
-                                <InputError
-                                    message={errors.note}
-                                    className="mt-2"
-                                />
-                            </div>
-                        </div>
-
-                        {/* TENGAH: Tabel Item Penjualan */}
-                        <div className="flex flex-col">
-                            <div className="flex justify-between items-center border-b pb-2 mb-3">
-                                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                                    <FileText size={16} /> Item Penjualan
-                                </h3>
-                                <SecondaryButton
-                                    type="button"
-                                    onClick={() => setAddItemOpen(true)}
-                                    size="sm"
-                                    className="gap-2 text-xs"
-                                >
-                                    <Plus size={14} /> Item
-                                </SecondaryButton>
-                            </div>
-
-                            <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-gray-100 text-gray-600 font-medium border-b border-gray-200">
-                                        <tr>
-                                            <th className="px-4 py-2">Item</th>
-                                            <th className="px-4 py-2 text-center w-16">
-                                                Qty
-                                            </th>
-                                            <th className="px-4 py-2 text-right">
-                                                Total
-                                            </th>
-                                            <th className="px-4 py-2 w-8"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {data.items.length > 0 ? (
-                                            data.items.map((item, index) => (
-                                                <tr
-                                                    key={index}
-                                                    className="bg-white"
-                                                >
-                                                    <td className="px-4 py-2">
-                                                        <div className="font-medium text-gray-900 leading-tight">
-                                                            {item.item_name}
-                                                        </div>
-                                                        <div className="text-[10px] text-gray-400 mt-1">
-                                                            @{" "}
-                                                            {formatRupiah(
-                                                                item.price,
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-2 text-center">
-                                                        {item.qty}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-right font-medium">
-                                                        {formatRupiah(
-                                                            item.price *
-                                                                item.qty,
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-center">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                handleRemoveItem(
-                                                                    index,
-                                                                )
-                                                            }
-                                                            className="text-red-400 hover:text-red-600"
-                                                        >
-                                                            <X size={14} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        ) : (
-                                            <tr>
-                                                <td
-                                                    colSpan="4"
-                                                    className="px-4 py-6 text-center text-gray-400 text-xs italic"
-                                                >
-                                                    Belum ada item jual.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* KANAN: Tabel Pengeluaran & Ringkasan */}
-                        <div className="space-y-6">
-                            {/* TABEL BIAYA MODAL (OTOMATIS) */}
-                            <div className="flex flex-col">
-                                <div className="flex justify-between items-center border-b pb-2 mb-3">
-                                    <h3 className="font-semibold text-orange-700 flex items-center gap-2">
-                                        <ShoppingBag size={16} /> Biaya Modal
-                                    </h3>
-                                </div>
-
-                                <div className="bg-orange-50/30 rounded-xl border border-orange-100 overflow-hidden">
-                                    <table className="w-full text-xs text-left">
-                                        <thead className="bg-orange-100/50 text-orange-800 font-medium border-b border-orange-100">
-                                            <tr>
-                                                <th className="px-4 py-2">
-                                                    Deskripsi
-                                                </th>
-                                                <th className="px-4 py-2 text-right">
-                                                    Nominal
-                                                </th>
-                                                <th className="px-4 py-2 w-8"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-orange-100">
-                                            {data.linked_purchases.length >
-                                            0 ? (
-                                                data.linked_purchases.map(
-                                                    (lp, index) => (
-                                                        <tr
-                                                            key={index}
-                                                            className="bg-white/50"
-                                                        >
-                                                            <td className="px-4 py-2">
-                                                                <div className="font-medium leading-tight">
-                                                                    {
-                                                                        lp.item_name
-                                                                    }
-                                                                </div>
-                                                                <div className="text-[9px] text-gray-400 mt-0.5">
-                                                                    Supplier:{" "}
-                                                                    {suppliers.find(
-                                                                        (
-                                                                            s,
-                                                                        ) =>
-                                                                            s.id ==
-                                                                            lp.supplier_id,
-                                                                    )?.name ||
-                                                                        "-"}
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-2 text-right font-bold text-orange-600">
-                                                                {formatRupiah(
-                                                                    lp.amount,
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 py-2 text-center">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        handleRemoveLinkedPurchase(
-                                                                            index,
-                                                                        )
-                                                                    }
-                                                                    className="text-red-400 hover:text-red-600"
-                                                                >
-                                                                    <X
-                                                                        size={
-                                                                            14
-                                                                        }
-                                                                    />
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ),
-                                                )
-                                            ) : (
-                                                <tr>
-                                                    <td
-                                                        colSpan="3"
-                                                        className="px-4 py-4 text-center text-gray-400 italic"
-                                                    >
-                                                        Tidak ada biaya modal.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {/* RINGKASAN AKHIR */}
-                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">
-                                        Total Penjualan
-                                    </span>
-                                    <span className="font-bold text-gray-900">
-                                        {formatRupiah(grandTotal)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">
-                                        Total Modal
-                                    </span>
-                                    <span className="font-medium text-orange-600">
-                                        -{" "}
-                                        {formatRupiah(
-                                            data.linked_purchases.reduce(
-                                                (sum, lp) =>
-                                                    sum +
-                                                    parseFloat(lp.amount),
-                                                0,
-                                            ),
-                                        )}
-                                    </span>
-                                </div>
-                                <div className="border-t pt-3 flex justify-between items-center">
-                                    <span className="text-gray-800 font-bold">
-                                        Estimasi Profit
-                                    </span>
-                                    <span className="text-xl font-black text-blue-600">
-                                        {formatRupiah(
-                                            grandTotal -
-                                                data.linked_purchases.reduce(
-                                                    (sum, lp) =>
-                                                        sum +
-                                                        parseFloat(lp.amount),
-                                                    0,
-                                                ),
-                                        )}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <InputError
-                                message={errors.items}
-                                className="mt-2"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
-                        <SecondaryButton
-                            type="button"
-                            onClick={() => setCreateOpen(false)}
-                        >
-                            Batal
-                        </SecondaryButton>
-                        <PrimaryButton
-                            disabled={processing}
-                            className="bg-red-600 hover:bg-red-700"
-                        >
-                            {editingOrder ? "Simpan Perubahan" : "Simpan Order"}
-                        </PrimaryButton>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* --- MODAL TAMBAH ITEM (NESTED) --- */}
-            <Modal
+            <AddItemModal
                 show={isAddItemOpen}
                 onClose={() => setAddItemOpen(false)}
-                maxWidth="md"
-                closeable={false}
-            >
-                <form onSubmit={handleAddItem} className="p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
-                        Tambah Item
-                    </h3>
-                    <div className="space-y-4">
-                        <div>
-                            <InputLabel value="Pilih Item (Katalog)" />
-                            <Select
-                                className="mt-1"
-                                classNamePrefix="react-select"
-                                options={items.map((item) => ({
-                                    value: item.id,
-                                    label: `${item.name} (${formatRupiah(item.price)})`,
-                                }))}
-                                value={
-                                    items
-                                        .map((item) => ({
-                                            value: item.id,
-                                            label: `${item.name} (${formatRupiah(item.price)})`,
-                                        }))
-                                        .find((opt) => opt.value == newItem.item_id) ||
-                                    null
-                                }
-                                onChange={handleItemSelect}
-                                placeholder="-- Pilih Item --"
-                                isClearable
-                                isSearchable
-                            />
-                        </div>
+                items={items}
+                suppliers={suppliers}
+                newItem={newItem}
+                setNewItem={setNewItem}
+                handleItemSelect={handleItemSelect}
+                handleAddItem={handleAddItem}
+                formatRupiah={formatRupiah}
+                isOwner={isOwner}
+            />
 
-                        {newItem.unit === "meteran" && (
-                            <div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                                <div>
-                                    <InputLabel value="Panjang (m)" className="text-blue-700" />
-                                    <TextInput
-                                        type="number"
-                                        step="0.01"
-                                        className="w-full mt-1"
-                                        value={newItem.length}
-                                        onChange={(e) =>
-                                            setNewItem({
-                                                ...newItem,
-                                                length: e.target.value,
-                                            })
-                                        }
-                                        placeholder="1"
-                                    />
-                                </div>
-                                <div>
-                                    <InputLabel value="Lebar (m)" className="text-blue-700" />
-                                    <TextInput
-                                        type="number"
-                                        step="0.01"
-                                        className="w-full mt-1"
-                                        value={newItem.width}
-                                        onChange={(e) =>
-                                            setNewItem({
-                                                ...newItem,
-                                                width: e.target.value,
-                                            })
-                                        }
-                                        placeholder="1"
-                                    />
-                                </div>
-                                <div className="col-span-2 text-[10px] text-blue-500 italic">
-                                    * Luas: {parseFloat(newItem.length || 0) * parseFloat(newItem.width || 0)} m²
-                                </div>
-                            </div>
-                        )}
-
-                        <div>
-                            <InputLabel value="Nama Item" />
-                            <TextInput
-                                className="w-full mt-1"
-                                value={newItem.item_name}
-                                onChange={(e) =>
-                                    setNewItem({
-                                        ...newItem,
-                                        item_name: e.target.value,
-                                    })
-                                }
-                                placeholder="Contoh: Jasa Desain"
-                                required
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <InputLabel value="Harga Satuan" />
-                                <TextInput
-                                    type="number"
-                                    className="w-full mt-1"
-                                    value={newItem.price}
-                                    onChange={(e) =>
-                                        setNewItem({
-                                            ...newItem,
-                                            price: e.target.value,
-                                        })
-                                    }
-                                    placeholder="0"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <InputLabel value="Qty" />
-                                <TextInput
-                                    type="number"
-                                    className="w-full mt-1"
-                                    value={newItem.qty}
-                                    onChange={(e) =>
-                                        setNewItem({
-                                            ...newItem,
-                                            qty: e.target.value,
-                                        })
-                                    }
-                                    placeholder="1"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {/* --- MODAL INPUT (LINKED PURCHASE) --- */}
-                        <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl space-y-3">
-                            <div className="flex items-center gap-2 text-orange-700 font-bold text-xs uppercase tracking-wider">
-                                <ShoppingBag size={14} /> Biaya Modal (Opsional)
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <InputLabel
-                                        value="Harga Modal (Satuan)"
-                                        className="text-xs"
-                                    />
-                                    <TextInput
-                                        type="number"
-                                        className="w-full mt-1 text-sm"
-                                        value={newItem.purchase_price}
-                                        onChange={(e) =>
-                                            setNewItem({
-                                                ...newItem,
-                                                purchase_price: e.target.value,
-                                            })
-                                        }
-                                        placeholder="0"
-                                    />
-                                </div>
-                                <div>
-                                    <InputLabel
-                                        value="Supplier"
-                                        className="text-xs"
-                                    />
-                                    <Select
-                                        className="mt-1 text-sm"
-                                        classNamePrefix="react-select"
-                                        options={suppliers.map((s) => ({
-                                            value: s.id,
-                                            label: s.name,
-                                        }))}
-                                        value={
-                                            suppliers
-                                                .map((s) => ({
-                                                    value: s.id,
-                                                    label: s.name,
-                                                }))
-                                                .find(
-                                                    (opt) =>
-                                                        String(opt.value) ===
-                                                        String(newItem.supplier_id),
-                                                ) || null
-                                        }
-                                        onChange={(selectedOption) => {
-                                            const sId = selectedOption ? selectedOption.value : "";
-                                            const sup = suppliers.find(s => s.id == sId);
-                                            setNewItem({
-                                                ...newItem,
-                                                supplier_id: sId,
-                                                purchase_status: sup ? sup.default_payment_status : "PAID"
-                                            });
-                                        }}
-                                        placeholder="-- Pilih Supplier --"
-                                        isClearable
-                                        isSearchable
-                                    />
-                                </div>
-                            </div>
-                            
-                            {newItem.supplier_id && (
-                                <div className="mt-2">
-                                    <InputLabel value="Status Modal" className="text-[10px]" />
-                                    <select
-                                        className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-xs py-1"
-                                        value={newItem.purchase_status}
-                                        onChange={(e) => setNewItem({ ...newItem, purchase_status: e.target.value })}
-                                    >
-                                        <option value="PAID">Lunas (Cash)</option>
-                                        <option value="UNPAID">Hutang (Belum Lunas)</option>
-                                    </select>
-                                </div>
-                            )}
-
-                            <div className="mt-2">
-                                <InputLabel
-                                    value="Total Harga Modal"
-                                    className="text-[10px] text-orange-700"
-                                />
-                                <TextInput
-                                    type="number"
-                                    className="w-full mt-1 text-xs bg-orange-50 border-orange-200"
-                                    value={newItem.purchase_amount}
-                                    onChange={(e) =>
-                                        setNewItem({
-                                            ...newItem,
-                                            purchase_amount: e.target.value,
-                                        })
-                                    }
-                                    placeholder="0"
-                                />
-                            </div>
-
-                            {newItem.purchase_price > 0 && (
-                                <div className="text-[10px] text-orange-400 italic">
-                                    * Kalkulasi sistem:{" "}
-                                    {formatRupiah(
-                                        newItem.purchase_price * newItem.qty,
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="pt-2 text-right">
-                            <p className="text-sm text-gray-500">
-                                Subtotal Jual:{" "}
-                                <span className="font-bold text-red-600">
-                                    {formatRupiah(newItem.price * newItem.qty)}
-                                </span>
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-3 mt-6">
-                        <SecondaryButton
-                            type="button"
-                            onClick={() => setAddItemOpen(false)}
-                        >
-                            Batal
-                        </SecondaryButton>
-                        <PrimaryButton
-                            type="submit"
-                            className="bg-red-600 hover:bg-red-700"
-                        >
-                            Tambah ke List
-                        </PrimaryButton>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* --- MODAL INPUT PURCHASE (MODAL USAHA) --- */}
-            <Modal
+            <PurchaseModal
                 show={isPurchaseOpen}
                 onClose={() => setPurchaseOpen(false)}
-                maxWidth="6xl"
-                closeable={false}
-            >
-                <form onSubmit={submitPurchase} className="p-6">
-                    <div className="flex justify-between items-center mb-6 border-b pb-4">
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-900">
-                                Input Modal / Pengeluaran
-                            </h2>
-                            <p className="text-sm text-gray-500">
-                                Untuk Order:{" "}
-                                <span className="font-medium text-gray-800">
-                                    {selectedOrderForModal?.invoice_number}
-                                </span>
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setPurchaseOpen(false)}
-                            className="text-gray-400 hover:text-gray-600"
-                        >
-                            <X size={24} />
-                        </button>
-                    </div>
+                selectedOrderForModal={selectedOrderForModal}
+                purchaseForm={purchaseForm}
+                submitPurchase={submitPurchase}
+                accounts={accounts}
+                categories={categories}
+                suppliers={suppliers}
+                supplierItems={supplierItems}
+                newPurchaseItem={newPurchaseItem}
+                setNewPurchaseItem={setNewPurchaseItem}
+                handleAddPurchaseItem={handleAddPurchaseItem}
+                handleRemovePurchaseItem={handleRemovePurchaseItem}
+                handleSupplierItemSelect={handleSupplierItemSelect}
+                formatRupiah={formatRupiah}
+            />
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* KIRI: Info Supplier & Pembayaran */}
-                        <div className="space-y-4">
-                            <h3 className="font-semibold text-gray-700 border-b pb-2">
-                                Data Supplier & Nota
-                            </h3>
-
-                            <div>
-                                <InputLabel value="Supplier" />
-                                <select
-                                    className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                    value={purchaseForm.data.contact_id}
-                                    onChange={(e) =>
-                                        purchaseForm.setData(
-                                            "contact_id",
-                                            e.target.value,
-                                        )
-                                    }
-                                >
-                                    <option value="">
-                                        -- Pilih Supplier --
-                                    </option>
-                                    {suppliers?.map((s) => (
-                                        <option key={s.id} value={s.id}>
-                                            {s.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <InputError
-                                    message={purchaseForm.errors.contact_id}
-                                    className="mt-1"
-                                />
-                            </div>
-
-                            <div>
-                                <InputLabel value="No. Nota Supplier" />
-                                <TextInput
-                                    className="w-full mt-1"
-                                    value={purchaseForm.data.reference_number}
-                                    onChange={(e) =>
-                                        purchaseForm.setData(
-                                            "reference_number",
-                                            e.target.value,
-                                        )
-                                    }
-                                    placeholder="Contoh: INV-SUP-001"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <InputLabel value="Tanggal" />
-                                    <TextInput
-                                        type="date"
-                                        className="w-full mt-1"
-                                        value={
-                                            purchaseForm.data.transaction_date
-                                        }
-                                        onChange={(e) =>
-                                            purchaseForm.setData(
-                                                "transaction_date",
-                                                e.target.value,
-                                            )
-                                        }
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <InputLabel value="Status Bayar" />
-                                    <select
-                                        className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                        value={purchaseForm.data.status}
-                                        onChange={(e) =>
-                                            purchaseForm.setData(
-                                                "status",
-                                                e.target.value,
-                                            )
-                                        }
-                                    >
-                                        <option value="UNPAID">Hutang</option>
-                                        <option value="PAID">
-                                            Lunas (Cash)
-                                        </option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            {purchaseForm.data.status === "PAID" && (
-                                <div className="bg-red-50 p-3 rounded-lg border border-red-100 space-y-3">
-                                    <div>
-                                        <InputLabel value="Sumber Dana (Akun)" />
-                                        <select
-                                            className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm"
-                                            value={purchaseForm.data.account_id}
-                                            onChange={(e) =>
-                                                purchaseForm.setData(
-                                                    "account_id",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            required
-                                        >
-                                            <option value="">
-                                                -- Pilih Akun --
-                                            </option>
-                                            {accounts.map((acc) => (
-                                                <option
-                                                    key={acc.id}
-                                                    value={acc.id}
-                                                >
-                                                    {acc.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Kategori Pengeluaran" />
-                                        <select
-                                            className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm"
-                                            value={
-                                                purchaseForm.data.category_id
-                                            }
-                                            onChange={(e) =>
-                                                purchaseForm.setData(
-                                                    "category_id",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            required
-                                        >
-                                            <option value="">
-                                                -- Pilih Kategori --
-                                            </option>
-                                            {categories.map((cat) => (
-                                                <option
-                                                    key={cat.id}
-                                                    value={cat.id}
-                                                >
-                                                    {cat.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* KANAN: Items Table */}
-                        <div className="flex flex-col h-full">
-                            <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
-                                Item Pengeluaran
-                            </h3>
-
-                            {/* Form Tambah Item Kecil */}
-                            <div className="bg-gray-50 p-3 rounded-lg mb-4 grid grid-cols-12 gap-2 items-end">
-                                <div className="col-span-4">
-                                    <InputLabel
-                                        value="Item (Pilih/Ketik)"
-                                        className="text-xs"
-                                    />
-                                    <select
-                                        className="w-full text-xs border-gray-300 rounded-md mb-1"
-                                        onChange={handleSupplierItemSelect}
-                                    >
-                                        <option value="">-- Pilih --</option>
-                                        {supplierItems
-                                            ?.filter(
-                                                (s) =>
-                                                    !purchaseForm.data
-                                                        .contact_id ||
-                                                    s.contact_id ==
-                                                        purchaseForm.data
-                                                            .contact_id,
-                                            )
-                                            .map((s) => (
-                                                <option key={s.id} value={s.id}>
-                                                    {s.name}
-                                                </option>
-                                            ))}
-                                    </select>
-                                    <TextInput
-                                        className="w-full text-xs py-1"
-                                        placeholder="Nama Item..."
-                                        value={newPurchaseItem.item_name}
-                                        onChange={(e) =>
-                                            setNewPurchaseItem({
-                                                ...newPurchaseItem,
-                                                item_name: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-                                <div className="col-span-3">
-                                    <InputLabel
-                                        value="Harga"
-                                        className="text-xs"
-                                    />
-                                    <TextInput
-                                        type="number"
-                                        className="w-full text-xs py-1"
-                                        placeholder="0"
-                                        value={newPurchaseItem.price}
-                                        onChange={(e) =>
-                                            setNewPurchaseItem({
-                                                ...newPurchaseItem,
-                                                price: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-                                <div className="col-span-2">
-                                    <InputLabel
-                                        value="Qty"
-                                        className="text-xs"
-                                    />
-                                    <TextInput
-                                        type="number"
-                                        className="w-full text-xs py-1"
-                                        placeholder="1"
-                                        value={newPurchaseItem.qty}
-                                        onChange={(e) =>
-                                            setNewPurchaseItem({
-                                                ...newPurchaseItem,
-                                                qty: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-                                <div className="col-span-3">
-                                    <SecondaryButton
-                                        onClick={handleAddPurchaseItem}
-                                        size="sm"
-                                        className="w-full justify-center text-xs h-[34px]"
-                                    >
-                                        <Plus size={14} /> Tambah
-                                    </SecondaryButton>
-                                </div>
-                            </div>
-
-                            {/* Table Items */}
-                            <div className="flex-1 border rounded-lg overflow-hidden flex flex-col">
-                                <div className="overflow-y-auto max-h-[300px]">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gray-100 text-gray-600 font-medium">
-                                            <tr>
-                                                <th className="px-3 py-2">
-                                                    Item
-                                                </th>
-                                                <th className="px-3 py-2 text-center">
-                                                    Qty
-                                                </th>
-                                                <th className="px-3 py-2 text-right">
-                                                    Total
-                                                </th>
-                                                <th className="px-3 py-2"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y">
-                                            {purchaseForm.data.items.map(
-                                                (item, idx) => (
-                                                    <tr key={idx}>
-                                                        <td className="px-3 py-2">
-                                                            {item.item_name}
-                                                        </td>
-                                                        <td className="px-3 py-2 text-center">
-                                                            {item.qty}
-                                                        </td>
-                                                        <td className="px-3 py-2 text-right">
-                                                            {formatRupiah(
-                                                                item.price *
-                                                                    item.qty,
-                                                            )}
-                                                        </td>
-                                                        <td className="px-3 py-2 text-center">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    handleRemovePurchaseItem(
-                                                                        idx,
-                                                                    )
-                                                                }
-                                                                className="text-red-500"
-                                                            >
-                                                                <Trash2
-                                                                    size={14}
-                                                                />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ),
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="bg-gray-50 p-3 border-t flex justify-between items-center font-bold">
-                                    <span>Total Pengeluaran</span>
-                                    <span className="text-red-600">
-                                        {formatRupiah(
-                                            purchaseForm.data.items.reduce(
-                                                (sum, item) =>
-                                                    sum + item.price * item.qty,
-                                                0,
-                                            ),
-                                        )}
-                                    </span>
-                                </div>
-                            </div>
-                            <InputError
-                                message={purchaseForm.errors.items}
-                                className="mt-2"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                        <SecondaryButton onClick={() => setPurchaseOpen(false)}>
-                            Batal
-                        </SecondaryButton>
-                        <PrimaryButton
-                            disabled={purchaseForm.processing}
-                            className="bg-red-600 hover:bg-red-700"
-                        >
-                            Simpan Modal
-                        </PrimaryButton>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* --- MODAL DELETE CONFIRMATION --- */}
-            <Modal
+            <DeleteOrderModal
                 show={isDeleteOpen}
                 onClose={() => setDeleteOpen(false)}
-                closeable={false}
-            >
-                <div className="p-6">
-                    <h2 className="text-lg font-bold text-red-600 mb-4">
-                        Hapus Order?
-                    </h2>
-                    <p className="text-gray-600 mb-6">
-                        Anda yakin ingin menghapus order{" "}
-                        <strong>{orderToDelete?.invoice_number}</strong>? Data
-                        transaksi keuangan atau piutang yang terkait juga akan
-                        dihapus.
-                    </p>
-                    <div className="flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setDeleteOpen(false)}>
-                            Batal
-                        </SecondaryButton>
-                        <DangerButton
-                            onClick={handleDelete}
-                            disabled={processing}
-                        >
-                            Hapus Permanen
-                        </DangerButton>
-                    </div>
-                </div>
-            </Modal>
+                orderToDelete={orderToDelete}
+                handleDelete={handleDelete}
+                processing={processing}
+            />
 
-            {/* --- MODAL PAYMENT --- */}
-            <Modal
+            <PaymentModal
                 show={isPaymentOpen}
                 onClose={() => setPaymentOpen(false)}
-                closeable={false}
-                maxWidth="md"
-            >
-                <form onSubmit={handlePayment} className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-gray-900">
-                            Input Pembayaran
-                        </h2>
-                        <button
-                            type="button"
-                            onClick={() => setPaymentOpen(false)}
-                            className="text-gray-400 hover:text-gray-600"
-                        >
-                            <X size={20} />
-                        </button>
-                    </div>
-
-                    <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-100">
-                        <p className="text-sm text-gray-600">Sisa Tagihan:</p>
-                        <p className="text-xl font-bold text-red-600">
-                            {orderToPay?.debt
-                                ? formatRupiah(orderToPay.debt.remaining)
-                                : formatRupiah(0)}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                            Invoice: {orderToPay?.invoice_number}
-                        </p>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div>
-                            <InputLabel value="Tanggal Bayar" />
-                            <TextInput
-                                type="date"
-                                className="w-full mt-1"
-                                value={paymentForm.data.transaction_date}
-                                onChange={(e) =>
-                                    paymentForm.setData(
-                                        "transaction_date",
-                                        e.target.value,
-                                    )
-                                }
-                                required
-                            />
-                            <InputError
-                                message={paymentForm.errors.transaction_date}
-                                className="mt-1"
-                            />
-                        </div>
-                        <div>
-                            <InputLabel value="Masuk ke Akun" />
-                            <select
-                                className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                value={paymentForm.data.account_id}
-                                onChange={(e) =>
-                                    paymentForm.setData(
-                                        "account_id",
-                                        e.target.value,
-                                    )
-                                }
-                                required
-                            >
-                                <option value="">-- Pilih Akun --</option>
-                                {accounts.map((acc) => (
-                                    <option key={acc.id} value={acc.id}>
-                                        {acc.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <InputError
-                                message={paymentForm.errors.account_id}
-                                className="mt-1"
-                            />
-                        </div>
-                        <div>
-                            <InputLabel value="Kategori (Income)" />
-                            <select
-                                className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                value={paymentForm.data.category_id}
-                                onChange={(e) =>
-                                    paymentForm.setData(
-                                        "category_id",
-                                        e.target.value,
-                                    )
-                                }
-                                required
-                            >
-                                <option value="">-- Pilih Kategori --</option>
-                                {categories.map((cat) => (
-                                    <option key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <InputError
-                                message={paymentForm.errors.category_id}
-                                className="mt-1"
-                            />
-                        </div>
-                        <div>
-                            <InputLabel value="Jumlah Bayar" />
-                            <TextInput
-                                type="number"
-                                className="w-full mt-1"
-                                value={paymentForm.data.amount}
-                                onChange={(e) =>
-                                    paymentForm.setData(
-                                        "amount",
-                                        e.target.value,
-                                    )
-                                }
-                                placeholder="0"
-                                required
-                            />
-                            <InputError
-                                message={paymentForm.errors.amount}
-                                className="mt-1"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 mt-6">
-                        <SecondaryButton onClick={() => setPaymentOpen(false)}>
-                            Batal
-                        </SecondaryButton>
-                        <PrimaryButton
-                            disabled={paymentForm.processing}
-                            className="bg-green-600 hover:bg-green-700"
-                        >
-                            Simpan Pembayaran
-                        </PrimaryButton>
-                    </div>
-                </form>
-            </Modal>
+                orderToPay={orderToPay}
+                paymentForm={paymentForm}
+                handlePayment={handlePayment}
+                accounts={accounts}
+                categories={categories}
+                formatRupiah={formatRupiah}
+            />
         </AuthenticatedLayout>
     );
 }

@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 
 export default function Sidebar() {
-    const { url } = usePage();
+    const { url, props } = usePage();
+    const user = props.auth?.user || {};
+    const isOwner = user.role !== "karyawan";
 
     // Fungsi helper untuk mengecek apakah menu sedang aktif
     const isActive = (path) => {
@@ -29,7 +31,7 @@ export default function Sidebar() {
         return path !== "/dashboard" && url.startsWith(path);
     };
 
-    const menuGroups = [
+    const menuGroups = isOwner ? [
         {
             title: "UTAMA",
             items: [
@@ -48,6 +50,7 @@ export default function Sidebar() {
                 { label: "Katalog Produk", href: "/catalogs", icon: Package }, // Master Item Jual
                 { label: "Stok Barang", href: "/stocks", icon: Box }, // Master Inventory (Tambahan)
                 { label: "Kategori", href: "/categories", icon: Tags },
+                { label: "Kelola Karyawan", href: "/employees", icon: Users },
             ],
         },
         {
@@ -74,6 +77,11 @@ export default function Sidebar() {
                     icon: TrendingDown,
                 },
                 { label: "Hutang & Piutang", href: "/debts", icon: CreditCard },
+                {
+                    label: "Piutang Karyawan",
+                    href: "/employee-debts",
+                    icon: CreditCard,
+                },
             ],
         },
         {
@@ -104,6 +112,43 @@ export default function Sidebar() {
                     href: "/reports/statements",
                     icon: ClipboardList,
                 }, // Laporan Stok (Tambahan)
+            ],
+        },
+    ] : [
+        {
+            title: "UTAMA",
+            items: [
+                {
+                    label: "Dashboard",
+                    href: "/dashboard",
+                    icon: LayoutDashboard,
+                },
+            ],
+        },
+        {
+            title: "MASTER DATA",
+            items: [
+                { label: "Stok Barang", href: "/stocks", icon: Box },
+            ],
+        },
+        {
+            title: "TRANSAKSI",
+            items: [
+                {
+                    label: "Penjualan (Order)",
+                    href: "/orders",
+                    icon: ShoppingCart,
+                },
+                {
+                    label: "Pembelian (Purchase)",
+                    href: "/purchases",
+                    icon: ShoppingBag,
+                },
+                {
+                    label: "Piutang Karyawan",
+                    href: "/employee-debts",
+                    icon: CreditCard,
+                },
             ],
         },
     ];

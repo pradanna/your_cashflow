@@ -14,7 +14,7 @@ class AccountController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $accountsQuery = Account::where('user_id', $user->id);
+        $accountsQuery = Account::where('user_id', $user->owner_id);
 
         return Inertia::render('Accounts/Index', [
             'accounts' => $accountsQuery->latest()->get(),
@@ -41,7 +41,7 @@ class AccountController extends Controller
             // Observer akan otomatis meng-update saldo akun menjadi sesuai inputan
             if ($validated['initial_balance'] > 0) {
                 Transaction::create([
-                    'user_id' => $request->user()->id,
+                    'user_id' => $request->user()->owner_id,
                     'account_id' => $account->id,
                     'type' => 'INCOME',
                     'amount' => $validated['initial_balance'],
@@ -56,7 +56,7 @@ class AccountController extends Controller
 
     public function update(Request $request, Account $account)
     {
-        if ($account->user_id !== $request->user()->id) {
+        if ($account->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 
@@ -71,7 +71,7 @@ class AccountController extends Controller
 
     public function destroy(Request $request, Account $account)
     {
-        if ($account->user_id !== $request->user()->id) {
+        if ($account->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 
@@ -84,7 +84,7 @@ class AccountController extends Controller
 
     public function adjust(Request $request, Account $account)
     {
-        if ($account->user_id !== $request->user()->id) {
+        if ($account->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 
@@ -105,13 +105,13 @@ class AccountController extends Controller
 
         // Cari atau buat kategori PENYESUAIAN
         $category = Category::firstOrCreate(
-            ['user_id' => $request->user()->id, 'name' => 'PENYESUAIAN', 'type' => $type],
+            ['user_id' => $request->user()->owner_id, 'name' => 'PENYESUAIAN', 'type' => $type],
             ['name' => 'PENYESUAIAN', 'type' => $type]
         );
 
         DB::transaction(function () use ($request, $account, $type, $amount, $category) {
             Transaction::create([
-                'user_id' => $request->user()->id,
+                'user_id' => $request->user()->owner_id,
                 'account_id' => $account->id,
                 'category_id' => $category->id,
                 'type' => $type,

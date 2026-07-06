@@ -24,7 +24,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $query = Order::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $request->user()->owner_id)
             ->with(['contact', 'items', 'transaction.account', 'debt', 'purchases.items']); // Eager load transaction.account
 
         // Filter: Search (Invoice / Customer Name)
@@ -56,32 +56,32 @@ class OrderController extends Controller
             ->withQueryString();
 
         // Data for Create Modal
-        $contacts = Contact::where('user_id', $request->user()->id)
-            ->whereIn('type', ['CUSTOMER', 'BOTH'])
+        $contacts = Contact::where('user_id', $request->user()->owner_id)
+            ->whereIn('type', ['CUSTOMER', 'BOTH', 'EMPLOYEE'])
             ->orderBy('name')
             ->get();
 
-        $items = Item::where('user_id', $request->user()->id)
+        $items = Item::where('user_id', $request->user()->owner_id)
             ->with('contact')
             ->orderBy('name')
             ->get();
 
-        $accounts = Account::where('user_id', $request->user()->id)
+        $accounts = Account::where('user_id', $request->user()->owner_id)
             ->orderBy('name')
             ->get();
 
-        $categories = Category::where('user_id', $request->user()->id)
+        $categories = Category::where('user_id', $request->user()->owner_id)
             ->where('type', 'INCOME')
             ->orderBy('name')
             ->get();
 
-        $suppliers = Contact::where('user_id', $request->user()->id)
+        $suppliers = Contact::where('user_id', $request->user()->owner_id)
             ->whereIn('type', ['SUPPLIER', 'BOTH'])
             ->orderBy('name')
             ->get();
 
-        $stocks = Stock::where('user_id', $request->user()->id)->orderBy('name')->get();
-        $supplierItems = SupplierItem::where('user_id', $request->user()->id)->orderBy('name')->get();
+        $stocks = Stock::where('user_id', $request->user()->owner_id)->orderBy('name')->get();
+        $supplierItems = SupplierItem::where('user_id', $request->user()->owner_id)->orderBy('name')->get();
 
         return Inertia::render('Orders/Index', [
             'orders' => $orders,
@@ -131,7 +131,7 @@ class OrderController extends Controller
         DB::transaction(function () use ($validated, $request) {
             // ... (Invoice generation logic remains same) ...
             $dateStr = date('Ymd', strtotime($validated['transaction_date']));
-            $count = Order::where('user_id', $request->user()->id)
+            $count = Order::where('user_id', $request->user()->owner_id)
                 ->whereDate('created_at', now())
                 ->count() + 1;
 
@@ -146,7 +146,7 @@ class OrderController extends Controller
             $grandTotal = collect($validated['items'])->sum(fn($item) => $item['qty'] * $item['price']);
 
             $order = Order::create([
-                'user_id' => $request->user()->id,
+                'user_id' => $request->user()->owner_id,
                 'contact_id' => $validated['contact_id'],
                 'invoice_number' => $invoiceNumber,
                 'transaction_date' => $validated['transaction_date'],
@@ -173,7 +173,7 @@ class OrderController extends Controller
 
                     // Create Purchase Header
                     $purchase = \App\Models\Purchase::create([
-                        'user_id' => $request->user()->id,
+                        'user_id' => $request->user()->owner_id,
                         'order_id' => $order->id, // LINK KE ORDER INI
                         'contact_id' => $lp['supplier_id'] ?? null,
                         'reference_number' => 'AUTO/' . $order->invoice_number,
@@ -196,9 +196,9 @@ class OrderController extends Controller
                     if ($lpStatus === 'PAID') {
                         // Buat Transaksi Pengeluaran (EXPENSE) untuk modal ini
                         \App\Models\Transaction::create([
-                            'user_id' => $request->user()->id,
-                            'account_id' => $validated['account_id'] ?? \App\Models\Account::where('user_id', $request->user()->id)->first()?->id,
-                            'category_id' => \App\Models\Category::where('user_id', $request->user()->id)->where('type', 'EXPENSE')->first()?->id,
+                            'user_id' => $request->user()->owner_id,
+                            'account_id' => $validated['account_id'] ?? \App\Models\Account::where('user_id', $request->user()->owner_id)->first()?->id,
+                            'category_id' => \App\Models\Category::where('user_id', $request->user()->owner_id)->where('type', 'EXPENSE')->first()?->id,
                             'purchase_id' => $purchase->id,
                             'type' => 'EXPENSE',
                             'amount' => $lp['amount'],
@@ -208,7 +208,7 @@ class OrderController extends Controller
                     } else {
                         // Buat Hutang ke Supplier
                         \App\Models\Debt::create([
-                            'user_id' => $request->user()->id,
+                            'user_id' => $request->user()->owner_id,
                             'contact_id' => $lp['supplier_id'],
                             'purchase_id' => $purchase->id,
                             'type' => 'PAYABLE', // Hutang kita ke supplier
@@ -228,7 +228,7 @@ class OrderController extends Controller
                 })->join(', ');
 
                 Transaction::create([
-                    'user_id' => $request->user()->id,
+                    'user_id' => $request->user()->owner_id,
                     'account_id' => $validated['account_id'],
                     'category_id' => $validated['category_id'],
                     'order_id' => $order->id,
@@ -240,7 +240,7 @@ class OrderController extends Controller
             } elseif ($validated['status'] === 'UNPAID') {
                 // 2. Jika Belum Lunas -> Catat Piutang (RECEIVABLE)
                 Debt::create([
-                    'user_id' => $request->user()->id,
+                    'user_id' => $request->user()->owner_id,
                     'contact_id' => $validated['contact_id'], // Wajib ada jika hutang
                     'order_id' => $order->id,
                     'type' => 'RECEIVABLE', // Piutang (Orang lain berhutang ke kita)
@@ -331,7 +331,7 @@ class OrderController extends Controller
                     ]);
                 } else {
                     Transaction::create([
-                        'user_id' => $request->user()->id,
+                        'user_id' => $request->user()->owner_id,
                         'account_id' => $validated['account_id'],
                         'category_id' => $validated['category_id'],
                         'order_id' => $order->id,
@@ -364,7 +364,7 @@ class OrderController extends Controller
                     if ($newStatus === 'PAID') $debt->delete();
                 } else {
                     Debt::create([
-                        'user_id' => $request->user()->id,
+                        'user_id' => $request->user()->owner_id,
                         'contact_id' => $validated['contact_id'],
                         'order_id' => $order->id,
                         'type' => 'RECEIVABLE',
@@ -439,7 +439,7 @@ class OrderController extends Controller
         DB::transaction(function () use ($request, $order, $debt, $validated) {
             // 1. Create Transaction (INCOME)
             Transaction::create([
-                'user_id' => $request->user()->id,
+                'user_id' => $request->user()->owner_id,
                 'account_id' => $validated['account_id'],
                 'category_id' => $validated['category_id'],
                 'order_id' => $order->id,
@@ -478,7 +478,7 @@ class OrderController extends Controller
     public function show(Order $order)
     {
         // Security check
-        if ($order->user_id !== auth()->id()) {
+        if ($order->user_id !== auth()->user()->owner_id) {
             abort(403);
         }
 

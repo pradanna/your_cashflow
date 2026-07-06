@@ -35,6 +35,7 @@ export default function PurchaseIndex({
     categories,
     supplierItems,
 }) {
+    const isOwner = auth.user.role !== "karyawan";
     // --- STATE ---
     const [search, setSearch] = useState(filters.search || "");
     const [status, setStatus] = useState(filters.status || "");
@@ -204,7 +205,7 @@ export default function PurchaseIndex({
         e.preventDefault();
 
         // Validasi input
-        if (!newItem.item_name || !newItem.price || newItem.qty <= 0) {
+        if (!newItem.item_name || (isOwner && !newItem.price) || newItem.qty <= 0) {
             alert("Mohon isi nama barang, harga, dan jumlah dengan benar.");
             return;
         }
@@ -217,7 +218,7 @@ export default function PurchaseIndex({
         const itemToAdd = {
             item_name: finalItemName,
             qty: Number(newItem.qty),
-            price: Number(newItem.price),
+            price: isOwner ? Number(newItem.price) : 0,
         };
 
         setData("items", [...data.items, itemToAdd]);
@@ -395,12 +396,16 @@ export default function PurchaseIndex({
                                     <th className="px-6 py-4">Tanggal</th>
                                     <th className="px-6 py-4">No. Nota</th>
                                     <th className="px-6 py-4">Supplier</th>
-                                    <th className="px-6 py-4 text-right">
-                                        Total
-                                    </th>
-                                    <th className="px-6 py-4 text-right">
-                                        Sisa Hutang
-                                    </th>
+                                    {isOwner && (
+                                        <>
+                                            <th className="px-6 py-4 text-right">
+                                                Total
+                                            </th>
+                                            <th className="px-6 py-4 text-right">
+                                                Sisa Hutang
+                                            </th>
+                                        </>
+                                    )}
                                     <th className="px-6 py-4 text-center">
                                         Status
                                     </th>
@@ -445,23 +450,27 @@ export default function PurchaseIndex({
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 text-right font-bold text-gray-900">
-                                                {formatRupiah(
-                                                    purchase.grand_total,
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-medium text-red-600">
-                                                {purchase.status === "PAID"
-                                                    ? "-"
-                                                    : purchase.debt
-                                                        ? formatRupiah(
-                                                            purchase.debt
-                                                                .remaining,
-                                                        )
-                                                        : formatRupiah(
+                                            {isOwner && (
+                                                <>
+                                                    <td className="px-6 py-4 text-right font-bold text-gray-900">
+                                                        {formatRupiah(
                                                             purchase.grand_total,
                                                         )}
-                                            </td>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-medium text-red-600">
+                                                        {purchase.status === "PAID"
+                                                            ? "-"
+                                                            : purchase.debt
+                                                                ? formatRupiah(
+                                                                    purchase.debt
+                                                                        .remaining,
+                                                                )
+                                                                : formatRupiah(
+                                                                    purchase.grand_total,
+                                                                )}
+                                                    </td>
+                                                </>
+                                            )}
                                             <td className="px-6 py-4 text-center">
                                                 <span
                                                     className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(
@@ -483,7 +492,7 @@ export default function PurchaseIndex({
                                                                     .transaction
                                                                     .account
                                                                     .name
-                                                            }
+                                                                    }
                                                         </div>
                                                     )}
                                             </td>
@@ -499,42 +508,45 @@ export default function PurchaseIndex({
                                                     >
                                                         <Eye size={16} />
                                                     </Link>
-                                                    {purchase.status !==
-                                                        "PAID" && (
+                                                    {isOwner && (
+                                                        <>
+                                                            {purchase.status !== "PAID" && (
+                                                                <button
+                                                                    onClick={() =>
+                                                                        openPaymentModal(
+                                                                            purchase,
+                                                                        )
+                                                                    }
+                                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                                                                    title="Bayar Hutang"
+                                                                >
+                                                                    <Wallet size={16} />
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={() =>
-                                                                    openPaymentModal(
+                                                                    openEditModal(
                                                                         purchase,
                                                                     )
                                                                 }
-                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
-                                                                title="Bayar Hutang"
+                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                                                                title="Edit"
                                                             >
-                                                                <Wallet size={16} />
+                                                                <Pencil size={16} />
                                                             </button>
-                                                        )}
-                                                    <button
-                                                        onClick={() =>
-                                                            openEditModal(
-                                                                purchase,
-                                                            )
-                                                        }
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <Pencil size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() =>
-                                                            openDeleteModal(
-                                                                purchase,
-                                                            )
-                                                        }
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                                                        title="Hapus"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    openDeleteModal(
+                                                                        purchase,
+                                                                    )
+                                                                }
+                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                                                title="Hapus"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -683,27 +695,29 @@ export default function PurchaseIndex({
                                         className="mt-2"
                                     />
                                 </div>
-                                <div>
-                                    <InputLabel value="Status Pembayaran" />
-                                    <select
-                                        className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                        value={data.status}
-                                        onChange={(e) =>
-                                            setData("status", e.target.value)
-                                        }
-                                    >
-                                        <option value="PAID">
-                                            Lunas (Cash)
-                                        </option>
-                                        <option value="UNPAID">
-                                            Hutang (Belum Lunas)
-                                        </option>
-                                    </select>
-                                    <InputError
-                                        message={errors.status}
-                                        className="mt-2"
-                                    />
-                                </div>
+                                {isOwner && (
+                                    <div>
+                                        <InputLabel value="Status Pembayaran" />
+                                        <select
+                                            className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
+                                            value={data.status}
+                                            onChange={(e) =>
+                                                setData("status", e.target.value)
+                                            }
+                                        >
+                                            <option value="PAID">
+                                                Lunas (Cash)
+                                            </option>
+                                            <option value="UNPAID">
+                                                Hutang (Belum Lunas)
+                                            </option>
+                                        </select>
+                                        <InputError
+                                            message={errors.status}
+                                            className="mt-2"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             {data.status === "PAID" && (
@@ -816,9 +830,11 @@ export default function PurchaseIndex({
                                                 <th className="px-4 py-2 text-center">
                                                     Qty
                                                 </th>
-                                                <th className="px-4 py-2 text-right">
-                                                    Total
-                                                </th>
+                                                {isOwner && (
+                                                    <th className="px-4 py-2 text-right">
+                                                        Total
+                                                    </th>
+                                                )}
                                                 <th className="px-4 py-2 w-10"></th>
                                             </tr>
                                         </thead>
@@ -836,22 +852,26 @@ export default function PurchaseIndex({
                                                                         item.item_name
                                                                     }
                                                                 </div>
-                                                                <div className="text-xs text-gray-500">
-                                                                    @{" "}
-                                                                    {formatRupiah(
-                                                                        item.price,
-                                                                    )}
-                                                                </div>
+                                                                {isOwner && (
+                                                                    <div className="text-xs text-gray-500">
+                                                                        @{" "}
+                                                                        {formatRupiah(
+                                                                            item.price,
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="px-4 py-2 text-center">
                                                                 {item.qty}
                                                             </td>
-                                                            <td className="px-4 py-2 text-right font-medium">
-                                                                {formatRupiah(
-                                                                    item.price *
-                                                                    item.qty,
-                                                                )}
-                                                            </td>
+                                                            {isOwner && (
+                                                                <td className="px-4 py-2 text-right font-medium">
+                                                                    {formatRupiah(
+                                                                        item.price *
+                                                                        item.qty,
+                                                                    )}
+                                                                </td>
+                                                            )}
                                                             <td className="px-4 py-2 text-center">
                                                                 <button
                                                                     type="button"
@@ -875,7 +895,7 @@ export default function PurchaseIndex({
                                             ) : (
                                                 <tr>
                                                     <td
-                                                        colSpan="4"
+                                                        colSpan={isOwner ? "4" : "3"}
                                                         className="px-4 py-8 text-center text-gray-400 text-xs"
                                                     >
                                                         Belum ada item
@@ -886,16 +906,18 @@ export default function PurchaseIndex({
                                         </tbody>
                                     </table>
                                 </div>
-                                <div className="mt-auto bg-white border-t border-gray-200 p-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 font-medium">
-                                            Grand Total
-                                        </span>
-                                        <span className="text-xl font-bold text-red-600">
-                                            {formatRupiah(grandTotal)}
-                                        </span>
+                                {isOwner && (
+                                    <div className="mt-auto bg-white border-t border-gray-200 p-4">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-600 font-medium">
+                                                Grand Total
+                                            </span>
+                                            <span className="text-xl font-bold text-red-600">
+                                                {formatRupiah(grandTotal)}
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                             <InputError
                                 message={errors.items}
@@ -950,7 +972,7 @@ export default function PurchaseIndex({
                                     )
                                     .map((s) => (
                                         <option key={s.id} value={s.id}>
-                                            {s.name} ({formatRupiah(s.price)})
+                                            {s.name} {isOwner && `(${formatRupiah(s.price)})`}
                                         </option>
                                     ))}
                             </select>
@@ -1012,31 +1034,33 @@ export default function PurchaseIndex({
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <InputLabel value={newItem.unit === "meteran" ? "Harga per m²" : "Harga Beli (Satuan)"} />
-                                <TextInput
-                                    type="number"
-                                    className="w-full mt-1"
-                                    value={newItem.unit === "meteran" ? newItem.base_price : newItem.price}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (newItem.unit === "meteran") {
-                                            setNewItem({
-                                                ...newItem,
-                                                base_price: val,
-                                            });
-                                        } else {
-                                            setNewItem({
-                                                ...newItem,
-                                                price: val,
-                                            });
-                                        }
-                                    }}
-                                    placeholder="0"
-                                    required
-                                />
-                            </div>
-                            <div>
+                            {isOwner ? (
+                                <div>
+                                    <InputLabel value={newItem.unit === "meteran" ? "Harga per m²" : "Harga Beli (Satuan)"} />
+                                    <TextInput
+                                        type="number"
+                                        className="w-full mt-1"
+                                        value={newItem.unit === "meteran" ? newItem.base_price : newItem.price}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (newItem.unit === "meteran") {
+                                                setNewItem({
+                                                    ...newItem,
+                                                    base_price: val,
+                                                });
+                                            } else {
+                                                setNewItem({
+                                                    ...newItem,
+                                                    price: val,
+                                                });
+                                            }
+                                        }}
+                                        placeholder="0"
+                                        required
+                                    />
+                                </div>
+                            ) : null}
+                            <div className={isOwner ? "" : "col-span-2"}>
                                 <InputLabel value="Qty" />
                                 <TextInput
                                     type="number"
@@ -1053,7 +1077,7 @@ export default function PurchaseIndex({
                                 />
                             </div>
                         </div>
-                        {newItem.unit === "meteran" && (
+                        {isOwner && newItem.unit === "meteran" && (
                             <div className="text-xs text-gray-500 mt-1">
                                 * Total Harga Satuan (Luas Area x Harga): <span className="font-semibold text-red-600">{formatRupiah(newItem.price)}</span>
                             </div>

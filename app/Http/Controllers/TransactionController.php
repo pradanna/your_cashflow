@@ -21,7 +21,7 @@ class TransactionController extends Controller
     {
         $user = $request->user();
         $query = Transaction::query()
-            ->where('user_id', $user->id)
+            ->where('user_id', $user->owner_id)
             ->where('type', 'INCOME')
             ->with(['account', 'category', 'order.contact', 'order.purchases', 'debt.contact']);
 
@@ -54,10 +54,10 @@ class TransactionController extends Controller
             ->get();
 
         // Data untuk Dropdown Filter & Modal
-        $accounts = Account::where('user_id', $user->id)->orderBy('name')->get();
-        $categories = Category::where('user_id', $user->id)->where('type', 'INCOME')->orderBy('name')->get();
-        $contacts = Contact::where('user_id', $user->id)->whereIn('type', ['CUSTOMER', 'BOTH'])->orderBy('name')->get();
-        $suppliers = Contact::where('user_id', $user->id)->whereIn('type', ['SUPPLIER', 'BOTH'])->orderBy('name')->get();
+        $accounts = Account::where('user_id', $user->owner_id)->orderBy('name')->get();
+        $categories = Category::where('user_id', $user->owner_id)->where('type', 'INCOME')->orderBy('name')->get();
+        $contacts = Contact::where('user_id', $user->owner_id)->whereIn('type', ['CUSTOMER', 'BOTH', 'EMPLOYEE'])->orderBy('name')->get();
+        $suppliers = Contact::where('user_id', $user->owner_id)->whereIn('type', ['SUPPLIER', 'BOTH'])->orderBy('name')->get();
 
         return Inertia::render('Transactions/Income', [
             'transactions' => $transactions,
@@ -82,7 +82,7 @@ class TransactionController extends Controller
     {
         $user = $request->user();
         $query = Transaction::query()
-            ->where('user_id', $user->id)
+            ->where('user_id', $user->owner_id)
             ->where('type', 'EXPENSE')
             ->with(['account', 'category', 'purchase.contact', 'purchase.order', 'debt.contact']);
 
@@ -115,9 +115,9 @@ class TransactionController extends Controller
             ->get();
 
         // Data untuk Dropdown Filter & Modal
-        $accounts = Account::where('user_id', $user->id)->orderBy('name')->get();
-        $categories = Category::where('user_id', $user->id)->where('type', 'EXPENSE')->orderBy('name')->get();
-        $contacts = Contact::where('user_id', $user->id)->whereIn('type', ['SUPPLIER', 'BOTH'])->orderBy('name')->get();
+        $accounts = Account::where('user_id', $user->owner_id)->orderBy('name')->get();
+        $categories = Category::where('user_id', $user->owner_id)->where('type', 'EXPENSE')->orderBy('name')->get();
+        $contacts = Contact::where('user_id', $user->owner_id)->whereIn('type', ['SUPPLIER', 'BOTH'])->orderBy('name')->get();
 
         return Inertia::render('Transactions/Expense', [
             'transactions' => $transactions,
@@ -158,7 +158,7 @@ class TransactionController extends Controller
      */
     public function update(Request $request, Transaction $transaction)
     {
-        if ($transaction->user_id !== $request->user()->id) abort(403);
+        if ($transaction->user_id !== $request->user()->owner_id) abort(403);
 
         $validated = $request->validate([
             'account_id' => 'required|exists:accounts,id',
@@ -175,7 +175,7 @@ class TransactionController extends Controller
 
     public function destroy(Request $request, Transaction $transaction)
     {
-        if ($transaction->user_id !== $request->user()->id) abort(403);
+        if ($transaction->user_id !== $request->user()->owner_id) abort(403);
         $transaction->delete();
         return redirect()->back()->with('success', 'Transaksi berhasil dihapus.');
     }
@@ -185,6 +185,9 @@ class TransactionController extends Controller
      */
     public function printInvoice(Order $order)
     {
+        if ($order->user_id !== auth()->user()->owner_id) {
+            abort(403);
+        }
         $order->load(['contact', 'items']);
         $pdf = Pdf::loadView('pdf.invoice', ['order' => $order]);
         return $pdf->stream('Invoice-' . str_replace('/', '-', $order->invoice_number) . '.pdf');

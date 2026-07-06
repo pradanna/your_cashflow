@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\Debt;
 use App\Models\Stock;
 use App\Models\StockMutation;
 use App\Models\Transaction;
@@ -23,7 +24,7 @@ class StockController extends Controller
         $search = $request->search;
 
         // 1. Query Stocks
-        $stocksQuery = Stock::where('user_id', $user->id);
+        $stocksQuery = Stock::where('user_id', $user->owner_id);
 
         if ($search) {
             $stocksQuery->where('name', 'like', "%{$search}%");
@@ -32,7 +33,7 @@ class StockController extends Controller
         $stocks = $stocksQuery->latest()->paginate(10)->withQueryString();
 
         // 2. Calculate Stats
-        $allStocks = Stock::where('user_id', $user->id)->get();
+        $allStocks = Stock::where('user_id', $user->owner_id)->get();
 
         $totalAssetValue = $allStocks->sum(function ($stock) {
             return $stock->qty * $stock->selling_price;
@@ -45,16 +46,16 @@ class StockController extends Controller
         // 3. Recent History (Mutations)
         // Mengambil 10 aktivitas terakhir
         $mutations = StockMutation::whereHas('stock', function ($q) use ($user) {
-            $q->where('user_id', $user->id);
+            $q->where('user_id', $user->owner_id);
         })
             ->with('stock')
             ->latest()
             ->take(10)
             ->get();
 
-        $contacts = Contact::where('user_id', $user->id)->whereIn('type', ['CUSTOMER', 'BOTH'])->orderBy('name')->get();
-        $accounts = Account::where('user_id', $user->id)->orderBy('name')->get();
-        $categories = Category::where('user_id', $user->id)->where('type', 'INCOME')->orderBy('name')->get();
+        $contacts = Contact::where('user_id', $user->owner_id)->whereIn('type', ['CUSTOMER', 'BOTH', 'EMPLOYEE'])->orderBy('name')->get();
+        $accounts = Account::where('user_id', $user->owner_id)->orderBy('name')->get();
+        $categories = Category::where('user_id', $user->owner_id)->where('type', 'INCOME')->orderBy('name')->get();
 
         return Inertia::render('Stocks/Index', [
             'stocks' => $stocks,
@@ -114,7 +115,7 @@ class StockController extends Controller
      */
     public function update(Request $request, Stock $stock)
     {
-        if ($stock->user_id !== $request->user()->id) {
+        if ($stock->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 
@@ -136,7 +137,7 @@ class StockController extends Controller
      */
     public function destroy(Request $request, Stock $stock)
     {
-        if ($stock->user_id !== $request->user()->id) {
+        if ($stock->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 
@@ -151,7 +152,7 @@ class StockController extends Controller
      */
     public function adjust(Request $request, Stock $stock)
     {
-        if ($stock->user_id !== $request->user()->id) {
+        if ($stock->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 
@@ -162,8 +163,6 @@ class StockController extends Controller
 
         if ($request->type === 'OUT') {
             $rules['contact_id'] = 'required|exists:contacts,id';
-            $rules['account_id'] = 'required|exists:accounts,id';
-            $rules['category_id'] = 'required|exists:categories,id';
         }
 
         $validated = $request->validate($rules);
@@ -176,19 +175,19 @@ class StockController extends Controller
                 // if ($stock->qty < $qtyChange) { ... }
                 $stock->qty -= $qtyChange;
 
-                // Create Income Transaction (Direct Sales)
+                // Create Piutang (RECEIVABLE)
                 $totalAmount = $qtyChange * $stock->selling_price;
                 $contact = Contact::find($validated['contact_id']);
                 $contactName = $contact ? $contact->name : 'Unknown';
 
-                Transaction::create([
+                Debt::create([
                     'user_id' => $stock->user_id,
-                    'account_id' => $validated['account_id'],
-                    'category_id' => $validated['category_id'],
-                    'type' => 'INCOME',
+                    'contact_id' => $validated['contact_id'],
+                    'type' => 'RECEIVABLE',
                     'amount' => $totalAmount,
-                    'transaction_date' => now(),
-                    'description' => "Penjualan Langsung (Stok Keluar): {$stock->name} ({$qtyChange} {$stock->unit}) - {$contactName}",
+                    'remaining' => $totalAmount,
+                    'status' => 'UNPAID',
+                    'note' => "Penjualan Langsung (Stok Keluar): {$stock->name} ({$qtyChange} {$stock->unit}) - {$contactName}",
                 ]);
             } else {
                 $stock->qty += $qtyChange;

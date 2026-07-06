@@ -20,7 +20,7 @@ class CatalogController extends Controller
         $search = $request->input('search');
 
         // 1. Query untuk Items (Penjualan)
-        $itemsQuery = Item::where('user_id', $user->id)
+        $itemsQuery = Item::where('user_id', $user->owner_id)
             ->with('contact'); // Eager load supplier jika ada
 
         if ($tab === 'items' && $search) {
@@ -28,7 +28,7 @@ class CatalogController extends Controller
         }
 
         // 2. Query untuk Supplier Items (Pembelian)
-        $supplierItemsQuery = SupplierItem::where('user_id', $user->id)
+        $supplierItemsQuery = SupplierItem::where('user_id', $user->owner_id)
             ->with('contact'); // Eager load relasi ke Contact (Supplier)
 
         if ($tab === 'supplier_items') {
@@ -42,7 +42,7 @@ class CatalogController extends Controller
 
 
         // 3. Ambil Data Supplier untuk Dropdown Filter & Modal
-        $suppliers = Contact::where('user_id', $user->id)
+        $suppliers = Contact::where('user_id', $user->owner_id)
             ->whereIn('type', ['SUPPLIER', 'BOTH'])
             ->orderBy('name')
             ->get();
@@ -97,7 +97,7 @@ class CatalogController extends Controller
         ]);
 
         SupplierItem::create([
-            'user_id' => $request->user()->id,
+            'user_id' => $request->user()->owner_id,
             'name' => $validated['name'],
             'contact_id' => $validated['supplier_id'],
             'price' => $validated['price'],

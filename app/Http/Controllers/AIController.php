@@ -27,15 +27,15 @@ class AIController extends Controller
 
         try {
             // Ambil daftar kategori, akun, kontak, dan MASTER STOK
-            $categories = Category::where('user_id', auth()->id())->pluck('name')->toArray();
-            $accounts = Account::where('user_id', auth()->id())->pluck('name')->toArray();
-            $contacts = Contact::where('user_id', auth()->id())->pluck('name')->toArray();
+            $categories = Category::where('user_id', auth()->user()->owner_id)->pluck('name')->toArray();
+            $accounts = Account::where('user_id', auth()->user()->owner_id)->pluck('name')->toArray();
+            $contacts = Contact::where('user_id', auth()->user()->owner_id)->pluck('name')->toArray();
             
             // Ambil data stok (Katalog Barang/Jasa)
-            $items = Item::where('user_id', auth()->id())->get(['name', 'price'])->toArray();
+            $items = Item::where('user_id', auth()->user()->owner_id)->get(['name', 'price'])->toArray();
 
             // Ambil data Supplier Items (Master Modal)
-            $supplierItems = SupplierItem::where('user_id', auth()->id())
+            $supplierItems = SupplierItem::where('user_id', auth()->user()->owner_id)
                 ->with('contact:id,name')
                 ->get()
                 ->map(fn($si) => [
@@ -61,26 +61,26 @@ class AIController extends Controller
             }
 
             // Mencocokkan Kategori
-            $category = Category::where('user_id', auth()->id())
+            $category = Category::where('user_id', auth()->user()->owner_id)
                 ->where('name', 'like', '%' . ($result['category_name'] ?? '') . '%')
                 ->first();
 
             // Mencocokkan Akun
             $account = null;
             if (isset($result['account_name'])) {
-                $account = Account::where('user_id', auth()->id())
+                $account = Account::where('user_id', auth()->user()->owner_id)
                     ->where('name', 'like', '%' . $result['account_name'] . '%')
                     ->first();
             }
 
             if (!$account) {
-                $account = Account::where('user_id', auth()->id())->first();
+                $account = Account::where('user_id', auth()->user()->owner_id)->first();
             }
 
             // Mencocokkan Kontak (Customer/Supplier)
             $contact = null;
             if (isset($result['contact_name']) && $result['contact_name'] !== null) {
-                $contact = Contact::where('user_id', auth()->id())
+                $contact = Contact::where('user_id', auth()->user()->owner_id)
                     ->where('name', 'like', '%' . $result['contact_name'] . '%')
                     ->first();
             }
@@ -105,7 +105,8 @@ class AIController extends Controller
                         'price' => $item['price'] ?? 0,
                     ])->toArray(),
                     'linked_purchases' => collect($result['linked_purchases'] ?? [])->map(function($lp) {
-                        $supplier = Contact::where('name', 'like', '%' . $lp['supplier_name'] . '%')
+                        $supplier = Contact::where('user_id', auth()->user()->owner_id)
+                            ->where('name', 'like', '%' . $lp['supplier_name'] . '%')
                             ->whereIn('type', ['SUPPLIER', 'BOTH'])
                             ->first();
                         return array_merge($lp, [

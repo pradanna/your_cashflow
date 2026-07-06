@@ -1,6 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { formatRupiah } from "@/Utils/format";
-import { Head } from "@inertiajs/react";
+import { Head, Link } from "@inertiajs/react";
 import {
     Wallet,
     TrendingUp,
@@ -11,6 +11,9 @@ import {
     AlertCircle,
     ArrowUpRight,
     ArrowDownRight,
+    ShoppingCart,
+    Box,
+    UserCheck,
 } from "lucide-react";
 import MagicInput from "@/Components/UI/MagicInput";
 
@@ -22,12 +25,167 @@ export default function Dashboard({
     receivables,
     stocks,
 }) {
-    // Helper format rupiah
+    const isKaryawan = auth.user.role === "karyawan";
+
+    if (isKaryawan) {
+        return (
+            <AuthenticatedLayout
+                header={
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-red-50 text-red-600 rounded-xl">
+                            <Package size={20} />
+                        </div>
+                        <div>
+                            <h2 className="font-semibold text-xl text-gray-800 leading-tight">
+                                Karyawan Dashboard
+                            </h2>
+                            <p className="text-xs font-normal text-gray-500 mt-0.5">
+                                Akses cepat ke input orderan dan pemantauan stok barang.
+                            </p>
+                        </div>
+                    </div>
+                }
+            >
+                <Head title="Karyawan Dashboard" />
+
+
+
+                {/* --- QUICK ACTION SHORCUTS --- */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <Link
+                        href="/orders"
+                        className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-200 group"
+                    >
+                        <div className="p-4 bg-red-50 text-red-600 rounded-2xl group-hover:bg-red-600 group-hover:text-white transition-colors">
+                            <ShoppingCart size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-gray-800 text-base">
+                                Input Order Baru
+                            </h4>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                                Catat penjualan baru
+                            </p>
+                        </div>
+                    </Link>
+
+                    <Link
+                        href="/stocks"
+                        className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-200 group"
+                    >
+                        <div className="p-4 bg-red-50 text-red-600 rounded-2xl group-hover:bg-red-600 group-hover:text-white transition-colors">
+                            <Box size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-gray-800 text-base">
+                                Kelola Stok Barang
+                            </h4>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                                Lihat & sesuaikan data stok barang
+                            </p>
+                        </div>
+                    </Link>
+
+                    <Link
+                        href="/catalogs"
+                        className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-200 group"
+                    >
+                        <div className="p-4 bg-red-50 text-red-600 rounded-2xl group-hover:bg-red-600 group-hover:text-white transition-colors">
+                            <Package size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-gray-800 text-base">
+                                Katalog Produk
+                            </h4>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                                Cek harga barang & unit penjualan
+                            </p>
+                        </div>
+                    </Link>
+                </div>
+
+                {/* --- MONITORING INFO --- */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Top Stock List */}
+                    <div className="space-y-4">
+                        <h4 className="font-bold text-gray-700 flex items-center gap-2">
+                            <Box className="text-red-500" size={20} />
+                            Stok Toko Saat Ini (Top Aset)
+                        </h4>
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
+                            {stocks && stocks.length > 0 ? (
+                                stocks.map((stock) => (
+                                    <div
+                                        key={stock.id}
+                                        className="p-4 flex justify-between items-center hover:bg-gray-50/50 transition-colors"
+                                    >
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-800">
+                                                {stock.name}
+                                            </p>
+                                            <p className="text-xs text-gray-400 mt-0.5">
+                                                Unit: {stock.unit} | Harga: {formatRupiah(stock.selling_price)}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${Number(stock.qty) < 10 ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                {Number(stock.qty).toLocaleString("id-ID")} {stock.unit}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="p-8 text-center text-gray-400 text-sm">
+                                    Belum ada data stok barang.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Low Stock Alerts */}
+                    <div className="space-y-4">
+                        <h4 className="font-bold text-gray-700 flex items-center gap-2">
+                            <AlertCircle className="text-amber-500" size={20} />
+                            Peringatan Stok Menipis
+                        </h4>
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
+                            {stocks && stocks.filter(s => Number(s.qty) < 10).length > 0 ? (
+                                stocks.filter(s => Number(s.qty) < 10).map((stock) => (
+                                    <div
+                                        key={stock.id}
+                                        className="p-4 flex justify-between items-center bg-amber-50/10 hover:bg-amber-50/20 transition-colors"
+                                    >
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-800">
+                                                {stock.name}
+                                            </p>
+                                            <p className="text-xs text-red-500 mt-0.5 font-medium">
+                                                Segera restok! Stok di bawah batas minimal (10).
+                                            </p>
+                                        </div>
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                                            Sisa {Number(stock.qty).toLocaleString("id-ID")} {stock.unit}
+                                        </span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="p-8 text-center text-gray-400 text-sm flex flex-col items-center gap-2">
+                                    <UserCheck className="text-emerald-500" size={24} />
+                                    <p className="font-medium text-gray-600">Semua Stok Aman</p>
+                                    <p className="text-xs">Tidak ada barang dengan stok kritis saat ini.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
 
     return (
         <AuthenticatedLayout header="Dashboard Overview">
             <Head title="Dashboard" />
-            
+
             <MagicInput />
 
             {/* --- BAGIAN 1: STATS CARDS --- */}
@@ -273,7 +431,7 @@ export default function Dashboard({
                                             <span className="text-sm font-bold text-purple-600">
                                                 {formatRupiah(
                                                     stock.qty *
-                                                        stock.selling_price,
+                                                    stock.selling_price,
                                                 )}
                                             </span>
                                         </div>

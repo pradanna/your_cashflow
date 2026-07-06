@@ -36,6 +36,11 @@ class Debt extends Model
         return $this->hasOne(Transaction::class);
     }
 
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
     public function purchase()
     {
         return $this->belongsTo(Purchase::class);

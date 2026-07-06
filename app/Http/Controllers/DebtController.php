@@ -30,7 +30,7 @@ class DebtController extends Controller
             ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
             ->leftJoin('purchases', 'debts.purchase_id', '=', 'purchases.id')
             ->select('debts.*')
-            ->where('debts.user_id', $user->id)
+            ->where('debts.user_id', $user->owner_id)
             ->where('debts.type', $type)
             ->with(['contact', 'order', 'purchase']);
 
@@ -68,14 +68,14 @@ class DebtController extends Controller
         $debts = $query->paginate($perPage)->withQueryString();
 
         // Data untuk filter dan modal
-        $contactType = ($type === 'PAYABLE') ? ['SUPPLIER', 'BOTH'] : ['CUSTOMER', 'BOTH'];
-        $contacts = Contact::where('user_id', $user->id)
+        $contactType = ($type === 'PAYABLE') ? ['SUPPLIER', 'BOTH'] : ['CUSTOMER', 'BOTH', 'EMPLOYEE'];
+        $contacts = Contact::where('user_id', $user->owner_id)
             ->whereIn('type', $contactType)
             ->orderBy('name')
             ->get();
 
-        $accounts = Account::where('user_id', $user->id)->orderBy('name')->get();
-        $categories = Category::where('user_id', $user->id)->orderBy('name')->get();
+        $accounts = Account::where('user_id', $user->owner_id)->orderBy('name')->get();
+        $categories = Category::where('user_id', $user->owner_id)->orderBy('name')->get();
 
         return Inertia::render('Debts/Index', [
             'debts' => $debts,
@@ -178,7 +178,7 @@ class DebtController extends Controller
             $descPrefix = ($debt->type === 'PAYABLE') ? 'Pembayaran Hutang' : 'Penerimaan Piutang';
 
             Transaction::create([
-                'user_id' => $request->user()->id,
+                'user_id' => $request->user()->owner_id,
                 'account_id' => $validated['account_id'],
                 'category_id' => $validated['category_id'],
                 'debt_id' => $debt->id,
@@ -208,7 +208,7 @@ class DebtController extends Controller
 
         DB::transaction(function () use ($request, $validated) {
             $user = $request->user();
-            $debtsToPay = Debt::where('user_id', $user->id)
+            $debtsToPay = Debt::where('user_id', $user->owner_id)
                 ->whereIn('id', $validated['debt_ids'])
                 ->where('status', '!=', 'PAID')
                 ->with(['order', 'purchase', 'contact']) // Eager load untuk deskripsi
@@ -226,7 +226,7 @@ class DebtController extends Controller
             foreach ($debtsToPay as $debt) {
                 // 1. Buat Transaksi untuk pembayaran
                 Transaction::create([
-                    'user_id' => $user->id,
+                    'user_id' => $user->owner_id,
                     'account_id' => $validated['account_id'],
                     'category_id' => $validated['category_id'],
                     'debt_id' => $debt->id,
@@ -250,5 +250,85 @@ class DebtController extends Controller
         });
 
         return redirect()->back()->with('success', 'Pembayaran untuk ' . count($validated['debt_ids']) . ' tagihan berhasil dicatat.');
+    }
+
+    public function employeeDebts(Request $request)
+    {
+        $user = $request->user();
+        
+        $query = Debt::where('debts.user_id', $user->owner_id)
+            ->join('contacts', 'debts.contact_id', '=', 'contacts.id')
+            ->where('contacts.type', 'EMPLOYEE')
+            ->where('debts.type', 'RECEIVABLE')
+            ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
+            ->select('debts.*');
+
+        if ($request->search) {
+            $query->where(function($q) use ($request) {
+                $q->where('contacts.name', 'like', '%' . $request->search . '%')
+                  ->orWhere('orders.invoice_number', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        if ($request->status && $request->status !== 'ALL') {
+            $query->where('debts.status', $request->status);
+        }
+
+        $debts = $query->orderBy('debts.created_at', 'desc')
+            ->with(['contact', 'order.items', 'transactions.account'])
+            ->paginate(15)
+            ->withQueryString();
+
+        $accounts = Account::where('user_id', $user->owner_id)->orderBy('name')->get();
+        $categories = Category::where('user_id', $user->owner_id)->orderBy('name')->get();
+
+        return Inertia::render('Debts/EmployeeDebts', [
+            'debts' => $debts,
+            'filters' => [
+                'search' => $request->search,
+                'status' => $request->status ?? 'ALL',
+            ],
+            'accounts' => $accounts,
+            'categories' => $categories,
+        ]);
+    }
+
+    public function employeePayment(Request $request, Debt $debt)
+    {
+        if ($debt->user_id !== $request->user()->owner_id) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'account_id' => 'required|exists:accounts,id',
+            'category_id' => 'required|exists:categories,id',
+            'amount' => 'required|numeric|min:0.01|max:' . $debt->remaining,
+            'transaction_date' => 'required|date',
+            'note' => 'nullable|string',
+        ]);
+
+        DB::transaction(function () use ($request, $debt, $validated) {
+            Transaction::create([
+                'user_id' => $request->user()->owner_id,
+                'account_id' => $validated['account_id'],
+                'category_id' => $validated['category_id'],
+                'debt_id' => $debt->id,
+                'type' => 'INCOME', // Pembayaran piutang = uang masuk
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['transaction_date'],
+                'description' => "Potong Gaji / Pembayaran Piutang Karyawan ({$debt->contact->name}) " . ($validated['note'] ?? ''),
+            ]);
+
+            $debt->remaining -= $validated['amount'];
+            $debt->status = ($debt->remaining <= 0) ? 'PAID' : 'PARTIAL';
+            $debt->save();
+
+            // Update status order jika lunas
+            if ($debt->remaining <= 0 && $debt->order) {
+                $debt->order->update(['status' => 'PAID']);
+            }
+        });
+
+        return redirect()->back()->with('success', 'Pembayaran piutang karyawan berhasil dicatat.');
     }
 }

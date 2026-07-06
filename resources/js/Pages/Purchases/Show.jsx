@@ -12,6 +12,7 @@ import {
 import { Button } from "@headlessui/react";
 
 export default function PurchaseShow({ auth, purchase }) {
+    const isOwner = auth.user.role !== 'karyawan';
     const formatRupiah = (number) => {
         return new Intl.NumberFormat("id-ID", {
             style: "currency",
@@ -86,7 +87,7 @@ export default function PurchaseShow({ auth, purchase }) {
                                     dateStyle: "long",
                                 })}
                             </div>
-                            {purchase.debt && (
+                            {isOwner && purchase.debt && (
                                 <div className="mt-2">
                                     <p className="text-xs text-gray-500">
                                         Sisa Hutang
@@ -162,12 +163,16 @@ export default function PurchaseShow({ auth, purchase }) {
                                         <th className="px-4 py-3 text-center">
                                             Qty
                                         </th>
-                                        <th className="px-4 py-3 text-right">
-                                            Harga Beli
-                                        </th>
-                                        <th className="px-4 py-3 text-right">
-                                            Subtotal
-                                        </th>
+                                        {isOwner && (
+                                            <>
+                                                <th className="px-4 py-3 text-right">
+                                                    Harga Beli
+                                                </th>
+                                                <th className="px-4 py-3 text-right">
+                                                    Subtotal
+                                                </th>
+                                            </>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -187,28 +192,34 @@ export default function PurchaseShow({ auth, purchase }) {
                                             <td className="px-4 py-3 text-center text-gray-600">
                                                 {parseFloat(item.qty)}
                                             </td>
-                                            <td className="px-4 py-3 text-right text-gray-600">
-                                                {formatRupiah(item.price)}
-                                            </td>
-                                            <td className="px-4 py-3 text-right font-medium text-gray-900">
-                                                {formatRupiah(item.subtotal)}
-                                            </td>
+                                            {isOwner && (
+                                                <>
+                                                    <td className="px-4 py-3 text-right text-gray-600">
+                                                        {formatRupiah(item.price)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-medium text-gray-900">
+                                                        {formatRupiah(item.subtotal)}
+                                                    </td>
+                                                </>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-gray-50 font-bold text-gray-900">
-                                    <tr>
-                                        <td
-                                            colSpan="3"
-                                            className="px-4 py-4 text-right"
-                                        >
-                                            Grand Total
-                                        </td>
-                                        <td className="px-4 py-4 text-right text-lg text-red-600">
-                                            {formatRupiah(purchase.grand_total)}
-                                        </td>
-                                    </tr>
-                                </tfoot>
+                                {isOwner && (
+                                    <tfoot className="bg-gray-50 font-bold text-gray-900">
+                                        <tr>
+                                            <td
+                                                colSpan="3"
+                                                className="px-4 py-4 text-right"
+                                            >
+                                                Grand Total
+                                            </td>
+                                            <td className="px-4 py-4 text-right text-lg text-red-600">
+                                                {formatRupiah(purchase.grand_total)}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                )}
                             </table>
                         </div>
                     </div>

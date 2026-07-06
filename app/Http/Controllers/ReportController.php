@@ -20,20 +20,20 @@ class ReportController extends Controller
         $endDate = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
 
         // 1. Hitung Saldo Awal (Total Income - Total Expense sebelum startDate)
-        $openingBalance = Transaction::where('user_id', $user->id)
+        $openingBalance = Transaction::where('user_id', $user->owner_id)
             ->where('transaction_date', '<', $startDate)
             ->selectRaw("SUM(CASE WHEN type = 'INCOME' THEN amount ELSE -amount END) as balance")
             ->value('balance') ?? 0;
 
         // 2. Ambil Transaksi dalam periode (Group by Date)
         // Asumsi transaction_date tersimpan sebagai YYYY-MM-DD
-        $transactions = Transaction::where('user_id', $user->id)
+        $transactions = Transaction::where('user_id', $user->owner_id)
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->get()
             ->groupBy(fn($item) => substr($item->transaction_date, 0, 10));
 
         // 3. Ambil Hutang/Piutang dalam periode (Group by Transaction Date)
-        $debts = Debt::where('debts.user_id', $user->id)
+        $debts = Debt::where('debts.user_id', $user->owner_id)
             ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
             ->leftJoin('purchases', 'debts.purchase_id', '=', 'purchases.id')
             ->select('debts.*')
@@ -87,7 +87,7 @@ class ReportController extends Controller
         $status = $request->input('status', 'ALL'); // ALL, UNPAID, PARTIAL, PAID
         $type = $request->input('type', 'ALL'); // ALL, PAYABLE, RECEIVABLE
 
-        $query = Debt::where('debts.user_id', $user->id)
+        $query = Debt::where('debts.user_id', $user->owner_id)
             ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
             ->leftJoin('purchases', 'debts.purchase_id', '=', 'purchases.id')
             ->select('debts.*')
@@ -115,8 +115,8 @@ class ReportController extends Controller
         $endDate = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
         $contactId = $request->input('contact_id');
 
-        $customers = Contact::where('user_id', $user->id)
-            ->whereIn('type', ['CUSTOMER', 'BOTH'])
+        $customers = Contact::where('user_id', $user->owner_id)
+            ->whereIn('type', ['CUSTOMER', 'BOTH', 'EMPLOYEE'])
             ->orderBy('name')
             ->get();
 
@@ -126,7 +126,7 @@ class ReportController extends Controller
             $contact = $customers->find($contactId);
 
             // Ambil piutang (Receivable) dalam periode
-            $invoices = Debt::where('debts.user_id', $user->id)
+            $invoices = Debt::where('debts.user_id', $user->owner_id)
                 ->where('debts.contact_id', $contactId)
                 ->where('debts.type', 'RECEIVABLE')
                 ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
@@ -165,13 +165,13 @@ class ReportController extends Controller
             return redirect()->back();
         }
 
-        $contact = Contact::where('user_id', $user->id)->find($contactId);
+        $contact = Contact::where('user_id', $user->owner_id)->find($contactId);
 
         if (!$contact) {
             abort(404);
         }
 
-        $invoices = Debt::where('debts.user_id', $user->id)
+        $invoices = Debt::where('debts.user_id', $user->owner_id)
             ->where('debts.contact_id', $contactId)
             ->where('debts.type', 'RECEIVABLE')
             ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
@@ -206,7 +206,7 @@ class ReportController extends Controller
         $dateEnd = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
 
         // Query: Ambil semua Debt (termasuk yang lunas) dalam rentang tanggal
-        $query = Debt::where('debts.user_id', $user->id)
+        $query = Debt::where('debts.user_id', $user->owner_id)
             ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
             ->leftJoin('purchases', 'debts.purchase_id', '=', 'purchases.id')
             ->select('debts.*')
@@ -256,12 +256,12 @@ class ReportController extends Controller
     public function printDebtDetail(Request $request, $contactId, $type)
     {
         $user = auth()->user();
-        $contact = Contact::where('user_id', $user->id)->findOrFail($contactId);
+        $contact = Contact::where('user_id', $user->owner_id)->findOrFail($contactId);
 
         $dateStart = $request->input('date_start', now()->startOfMonth()->format('Y-m-d'));
         $dateEnd = $request->input('date_end', now()->endOfMonth()->format('Y-m-d'));
 
-        $query = Debt::where('debts.user_id', $user->id)
+        $query = Debt::where('debts.user_id', $user->owner_id)
             ->where('debts.contact_id', $contactId)
             ->where('debts.type', $type)
             ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
@@ -303,7 +303,7 @@ class ReportController extends Controller
         $contactId = $request->input('contact_id');
 
         // Base Query
-        $query = Transaction::where('user_id', $user->id)
+        $query = Transaction::where('user_id', $user->owner_id)
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->with(['category', 'order.contact', 'purchase.contact', 'debt.contact']);
 
@@ -362,8 +362,8 @@ class ReportController extends Controller
                 'by_contact' => $formatChart($expenseByContact),
                 'trend' => $formatTrend($expenseTrend),
             ],
-            'categories' => Category::where('user_id', $user->id)->orderBy('name')->get(),
-            'contacts' => Contact::where('user_id', $user->id)->orderBy('name')->get(),
+            'categories' => Category::where('user_id', $user->owner_id)->orderBy('name')->get(),
+            'contacts' => Contact::where('user_id', $user->owner_id)->orderBy('name')->get(),
         ]);
     }
 }

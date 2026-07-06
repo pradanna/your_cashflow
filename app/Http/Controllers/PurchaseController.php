@@ -23,7 +23,7 @@ class PurchaseController extends Controller
     public function index(Request $request)
     {
         $query = Purchase::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $request->user()->owner_id)
             ->with(['contact', 'items', 'transaction.account', 'debt', 'order']);
 
         // Filter: Search (Reference Number / Supplier Name)
@@ -58,25 +58,25 @@ class PurchaseController extends Controller
             ->withQueryString();
 
         // Data untuk Modal Create/Edit
-        $suppliers = Contact::where('user_id', $request->user()->id)
+        $suppliers = Contact::where('user_id', $request->user()->owner_id)
             ->whereIn('type', ['SUPPLIER', 'BOTH'])
             ->orderBy('name')
             ->get();
 
-        $stocks = Stock::where('user_id', $request->user()->id)
+        $stocks = Stock::where('user_id', $request->user()->owner_id)
             ->orderBy('name')
             ->get();
 
-        $accounts = Account::where('user_id', $request->user()->id)
+        $accounts = Account::where('user_id', $request->user()->owner_id)
             ->orderBy('name')
             ->get();
 
-        $categories = Category::where('user_id', $request->user()->id)
+        $categories = Category::where('user_id', $request->user()->owner_id)
             ->where('type', 'EXPENSE')
             ->orderBy('name')
             ->get();
 
-        $supplierItems = SupplierItem::where('user_id', $request->user()->id)
+        $supplierItems = SupplierItem::where('user_id', $request->user()->owner_id)
             ->orderBy('name')
             ->get();
 
@@ -121,7 +121,7 @@ class PurchaseController extends Controller
         DB::transaction(function () use ($validated, $request) {
             // Generate Reference Number: PUR/YYYYMMDD/XXXX
             $dateStr = date('Ymd', strtotime($validated['transaction_date']));
-            $count = Purchase::where('user_id', $request->user()->id)
+            $count = Purchase::where('user_id', $request->user()->owner_id)
                 ->whereDate('created_at', now())
                 ->count() + 1;
 
@@ -138,7 +138,7 @@ class PurchaseController extends Controller
 
             // 2. Buat Purchase
             $purchase = Purchase::create([
-                'user_id' => $request->user()->id,
+                'user_id' => $request->user()->owner_id,
                 'order_id' => $validated['order_id'] ?? null,
                 'contact_id' => $validated['contact_id'],
                 'reference_number' => $referenceNumber,
@@ -184,7 +184,7 @@ class PurchaseController extends Controller
                 // Buat Transaksi Pengeluaran (EXPENSE)
                 $itemSummary = collect($validated['items'])->pluck('item_name')->join(', ');
                 Transaction::create([
-                    'user_id' => $request->user()->id,
+                    'user_id' => $request->user()->owner_id,
                     'account_id' => $validated['account_id'],
                     'category_id' => $validated['category_id'],
                     'purchase_id' => $purchase->id,
@@ -196,7 +196,7 @@ class PurchaseController extends Controller
             } else { // UNPAID
                 // Catat Hutang (PAYABLE)
                 Debt::create([
-                    'user_id' => $request->user()->id,
+                    'user_id' => $request->user()->owner_id,
                     'contact_id' => $validated['contact_id'],
                     'purchase_id' => $purchase->id,
                     'type' => 'PAYABLE', // Hutang kita ke supplier
@@ -215,7 +215,7 @@ class PurchaseController extends Controller
      */
     public function show(Purchase $purchase)
     {
-        if ($purchase->user_id !== auth()->id()) {
+        if ($purchase->user_id !== auth()->user()->owner_id) {
             abort(403);
         }
 
@@ -338,7 +338,7 @@ class PurchaseController extends Controller
                     ]);
                 } else {
                     Transaction::create([
-                        'user_id' => $request->user()->id,
+                        'user_id' => $request->user()->owner_id,
                         'account_id' => $validated['account_id'],
                         'category_id' => $validated['category_id'],
                         'purchase_id' => $purchase->id,
@@ -369,7 +369,7 @@ class PurchaseController extends Controller
                     if ($newStatus !== 'UNPAID') $purchase->update(['status' => $newStatus]);
                 } else {
                     Debt::create([
-                        'user_id' => $request->user()->id,
+                        'user_id' => $request->user()->owner_id,
                         'contact_id' => $validated['contact_id'],
                         'purchase_id' => $purchase->id,
                         'type' => 'PAYABLE',
@@ -447,7 +447,7 @@ class PurchaseController extends Controller
         DB::transaction(function () use ($request, $purchase, $debt, $validated) {
             // 1. Buat Transaksi Pengeluaran (EXPENSE)
             Transaction::create([
-                'user_id' => $request->user()->id,
+                'user_id' => $request->user()->owner_id,
                 'account_id' => $validated['account_id'],
                 'category_id' => $validated['category_id'],
                 'purchase_id' => $purchase->id,

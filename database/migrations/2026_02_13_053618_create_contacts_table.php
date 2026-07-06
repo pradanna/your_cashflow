@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->enum('type', ['CUSTOMER', 'SUPPLIER', 'BOTH'])->default('BOTH');
+            $table->enum('type', ['CUSTOMER', 'SUPPLIER', 'BOTH', 'EMPLOYEE'])->default('BOTH');
             $table->string('phone')->nullable();
             $table->text('address')->nullable();
             $table->timestamps();

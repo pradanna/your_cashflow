@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'parent_id',
     ];
 
     /**
@@ -46,46 +48,56 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Get the active owner's user ID.
+     */
+    public function getOwnerIdAttribute(): int
+    {
+        return $this->role === 'karyawan' ? (int) $this->parent_id : (int) $this->id;
+    }
 
     public function accounts()
     {
-        return $this->hasMany(Account::class);
+        return $this->hasMany(Account::class, 'user_id', $this->owner_id);
     }
 
-    // Kita siapkan juga relasi lain agar tidak error nanti
     public function categories()
     {
-        return $this->hasMany(Category::class);
+        return $this->hasMany(Category::class, 'user_id', $this->owner_id);
     }
+
     public function contacts()
     {
-        return $this->hasMany(Contact::class);
+        return $this->hasMany(Contact::class, 'user_id', $this->owner_id);
     }
+
     public function stocks()
     {
-        return $this->hasMany(Stock::class);
+        return $this->hasMany(Stock::class, 'user_id', $this->owner_id);
     }
+
     public function items()
     {
-        return $this->hasMany(Item::class);
+        return $this->hasMany(Item::class, 'user_id', $this->owner_id);
     }
+
     public function transactions()
     {
-        return $this->hasMany(Transaction::class);
+        return $this->hasMany(Transaction::class, 'user_id', $this->owner_id);
     }
 
     public function purchases()
     {
-        return $this->hasMany(Purchase::class);
+        return $this->hasMany(Purchase::class, 'user_id', $this->owner_id);
     }
 
     public function debts()
     {
-        return $this->hasMany(Debt::class);
+        return $this->hasMany(Debt::class, 'user_id', $this->owner_id);
     }
 
     public function orders()
     {
-        return $this->hasMany(Order::class);
+        return $this->hasMany(Order::class, 'user_id', $this->owner_id);
     }
 }

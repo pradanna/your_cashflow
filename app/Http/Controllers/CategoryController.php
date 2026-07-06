@@ -10,7 +10,7 @@ class CategoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Category::where('user_id', $request->user()->id);
+        $query = Category::where('user_id', $request->user()->owner_id);
 
         // Filter: Search Name
         if ($request->search) {
@@ -44,7 +44,7 @@ class CategoryController extends Controller
 
     public function update(Request $request, Category $category)
     {
-        if ($category->user_id !== $request->user()->id) {
+        if ($category->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 
@@ -60,7 +60,7 @@ class CategoryController extends Controller
 
     public function destroy(Request $request, Category $category)
     {
-        if ($category->user_id !== $request->user()->id) {
+        if ($category->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 

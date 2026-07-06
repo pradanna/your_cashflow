@@ -15,12 +15,12 @@ class DashboardController extends Controller
         $user = $request->user();
 
         // 1. Liquid Assets (Total Saldo Akun)
-        $accounts = Account::where('user_id', $user->id)->get();
+        $accounts = Account::where('user_id', $user->owner_id)->get();
         $totalLiquid = $accounts->sum('balance');
 
         // 2. Hutang & Piutang (Active)
         // Mengambil data hutang/piutang yang belum lunas (UNPAID/PARTIAL)
-        $activeDebts = Debt::where('user_id', $user->id)
+        $activeDebts = Debt::where('user_id', $user->owner_id)
             ->whereIn('status', ['UNPAID', 'PARTIAL'])
             ->with('contact') // Eager load contact untuk nama
             ->get();
@@ -30,7 +30,7 @@ class DashboardController extends Controller
 
         // 3. Stock Value (Inventory Asset)
         // Nilai Aset Stok = Quantity * Average Cost
-        $stocks = Stock::where('user_id', $user->id)->get();
+        $stocks = Stock::where('user_id', $user->owner_id)->get();
         $totalStockValue = $stocks->sum(function ($stock) {
             return $stock->qty * $stock->selling_price;
         });

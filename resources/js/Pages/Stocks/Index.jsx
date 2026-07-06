@@ -34,6 +34,8 @@ export default function StockIndex({
     accounts,
     categories,
 }) {
+    const isOwner = auth.user.role !== "karyawan";
+
     // --- STATE ---
     const [search, setSearch] = useState(filters.search || "");
     const [isCreateOpen, setCreateOpen] = useState(false);
@@ -161,22 +163,7 @@ export default function StockIndex({
             <div className="py-6">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
                     {/* 1. STATS CARDS */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Total Asset Value */}
-                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-                            <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-                                <DollarSign size={24} />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-500">
-                                    Total Nilai Aset
-                                </p>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {formatRupiah(stats.total_asset_value)}
-                                </p>
-                            </div>
-                        </div>
-
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Total Product Types */}
                         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
                             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
@@ -252,14 +239,13 @@ export default function StockIndex({
                                         <th className="px-6 py-4 text-right">
                                             Stok
                                         </th>
-                                        <th className="px-6 py-4 text-right">
-                                            Harga Modal (Avg)
-                                        </th>
+                                        {isOwner && (
+                                            <th className="px-6 py-4 text-right">
+                                                Harga Modal (Avg)
+                                            </th>
+                                        )}
                                         <th className="px-6 py-4 text-right">
                                             Harga Jual
-                                        </th>
-                                        <th className="px-6 py-4 text-right">
-                                            Total Aset
                                         </th>
                                         <th className="px-6 py-4 text-center">
                                             Aksi
@@ -286,20 +272,16 @@ export default function StockIndex({
                                                         stock.qty,
                                                     ).toLocaleString("id-ID")}
                                                 </td>
-                                                <td className="px-6 py-4 text-right text-gray-600">
-                                                    {formatRupiah(
-                                                        stock.selling_price,
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-right text-gray-600">
-                                                    {formatRupiah(
-                                                        stock.selling_price,
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-right text-gray-900 font-medium">
-                                                    {formatRupiah(
-                                                        stock.qty *
+                                                {isOwner && (
+                                                    <td className="px-6 py-4 text-right text-gray-600">
+                                                        {formatRupiah(
                                                             stock.selling_price,
+                                                        )}
+                                                    </td>
+                                                )}
+                                                <td className="px-6 py-4 text-right text-gray-600">
+                                                    {formatRupiah(
+                                                        stock.selling_price,
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -777,72 +759,11 @@ export default function StockIndex({
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <InputLabel value="Masuk ke Akun" />
-                                        <select
-                                            className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                            value={adjustForm.data.account_id}
-                                            onChange={(e) =>
-                                                adjustForm.setData(
-                                                    "account_id",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            required
-                                        >
-                                            <option value="">
-                                                -- Pilih Akun --
-                                            </option>
-                                            {accounts.map((a) => (
-                                                <option key={a.id} value={a.id}>
-                                                    {a.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError
-                                            message={
-                                                adjustForm.errors.account_id
-                                            }
-                                            className="mt-2"
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Kategori Pemasukan" />
-                                        <select
-                                            className="w-full mt-1 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
-                                            value={adjustForm.data.category_id}
-                                            onChange={(e) =>
-                                                adjustForm.setData(
-                                                    "category_id",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            required
-                                        >
-                                            <option value="">
-                                                -- Pilih Kategori --
-                                            </option>
-                                            {categories.map((c) => (
-                                                <option key={c.id} value={c.id}>
-                                                    {c.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError
-                                            message={
-                                                adjustForm.errors.category_id
-                                            }
-                                            className="mt-2"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                                 <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
                                     <span className="text-sm text-gray-600">
-                                        Total Pemasukan:
+                                        Total Piutang:
                                     </span>
-                                    <span className="font-bold text-green-600 text-lg">
+                                    <span className="font-bold text-amber-600 text-lg">
                                         {formatRupiah(
                                             (parseFloat(adjustForm.data.qty) ||
                                                 0) *

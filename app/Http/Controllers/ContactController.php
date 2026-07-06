@@ -44,7 +44,7 @@ class ContactController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['CUSTOMER', 'SUPPLIER', 'BOTH'])],
+            'type' => ['required', Rule::in(['CUSTOMER', 'SUPPLIER', 'BOTH', 'EMPLOYEE'])],
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:1000',
             'default_payment_status' => ['required', Rule::in(['PAID', 'UNPAID'])],
@@ -60,13 +60,13 @@ class ContactController extends Controller
      */
     public function update(Request $request, Contact $contact)
     {
-        if ($contact->user_id !== $request->user()->id) {
+        if ($contact->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['CUSTOMER', 'SUPPLIER', 'BOTH'])],
+            'type' => ['required', Rule::in(['CUSTOMER', 'SUPPLIER', 'BOTH', 'EMPLOYEE'])],
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:1000',
             'default_payment_status' => ['required', Rule::in(['PAID', 'UNPAID'])],
@@ -82,7 +82,7 @@ class ContactController extends Controller
      */
     public function destroy(Contact $contact)
     {
-        if ($contact->user_id !== auth()->id()) {
+        if ($contact->user_id !== auth()->user()->owner_id) {
             abort(403);
         }
 
