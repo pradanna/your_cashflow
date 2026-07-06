@@ -143,7 +143,7 @@ export default function ContactIndex({ auth, contacts, filters }) {
             case "EMPLOYEE":
                 return {
                     icon: <UserCheck size={12} />,
-                    label: "Karyawan / Employee",
+                    label: "Karyawan",
                     className: "bg-orange-100 text-orange-800",
                 };
             default:
@@ -194,7 +194,7 @@ export default function ContactIndex({ auth, contacts, filters }) {
                                 <option value="CUSTOMER">Customer</option>
                                 <option value="SUPPLIER">Supplier</option>
                                 <option value="BOTH">Keduanya</option>
-                                <option value="EMPLOYEE">Karyawan / Employee</option>
+                                <option value="EMPLOYEE">Karyawan</option>
                             </select>
                         </div>
                         <PrimaryButton
@@ -387,7 +387,7 @@ export default function ContactIndex({ auth, contacts, filters }) {
                                 </option>
                                 <option value="CUSTOMER">Customer</option>
                                 <option value="SUPPLIER">Supplier</option>
-                                <option value="EMPLOYEE">Karyawan / Employee</option>
+                                <option value="EMPLOYEE">Karyawan</option>
                             </select>
                             <InputError
                                 message={errors.type}

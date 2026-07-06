@@ -442,7 +442,7 @@ export default function OrderIndex({
 
     const contactOptions = contacts.map((contact) => ({
         value: contact.id,
-        label: contact.type === 'EMPLOYEE' ? `${contact.name} (Employee)` : contact.name,
+        label: contact.type === 'EMPLOYEE' ? `${contact.name} (Karyawan)` : contact.name,
     }));
 
     return (
