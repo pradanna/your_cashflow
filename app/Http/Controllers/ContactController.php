@@ -50,7 +50,8 @@ class ContactController extends Controller
             'default_payment_status' => ['required', Rule::in(['PAID', 'UNPAID'])],
         ]);
 
-        $request->user()->contacts()->create($validated);
+        $validated['user_id'] = $request->user()->owner_id;
+        Contact::create($validated);
 
         return redirect()->back()->with('success', 'Kontak berhasil ditambahkan.');
     }

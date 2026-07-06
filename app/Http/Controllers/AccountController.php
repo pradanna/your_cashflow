@@ -32,7 +32,8 @@ class AccountController extends Controller
 
         DB::transaction(function () use ($validated, $request) {
             // 1. Buat Akun (Saldo 0 dulu)
-            $account = $request->user()->accounts()->create([
+            $account = Account::create([
+                'user_id' => $request->user()->owner_id,
                 'name' => $validated['name'],
                 'balance' => 0,
             ]);

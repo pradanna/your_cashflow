@@ -87,11 +87,11 @@ class StockController extends Controller
 
         DB::transaction(function () use ($request, $validated) {
             // 1. Create Stock Master
-            $stock = $request->user()->stocks()->create([
+            $stock = Stock::create([
+                'user_id' => $request->user()->owner_id,
                 'name' => $validated['name'],
                 'unit' => $validated['unit'],
                 'qty' => $validated['qty'],
-                'selling_price' => $validated['selling_price'],
                 'selling_price' => $validated['selling_price'],
             ]);
 

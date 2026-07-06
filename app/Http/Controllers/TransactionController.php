@@ -148,7 +148,8 @@ class TransactionController extends Controller
             'type' => 'required|in:INCOME,EXPENSE',
         ]);
 
-        $request->user()->transactions()->create($validated);
+        $validated['user_id'] = $request->user()->owner_id;
+        Transaction::create($validated);
 
         return redirect()->back()->with('success', 'Transaksi berhasil disimpan.');
     }
