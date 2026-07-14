@@ -231,6 +231,10 @@ class PurchaseController extends Controller
      */
     public function update(Request $request, Purchase $purchase)
     {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan mengedit pembelian.');
+        }
+
         $validated = $request->validate([
             'contact_id' => 'nullable|required_if:status,UNPAID|exists:contacts,id',
             'reference_number' => 'nullable|string|max:255',
@@ -387,8 +391,12 @@ class PurchaseController extends Controller
     /**
      * Menghapus pembelian.
      */
-    public function destroy(Purchase $purchase)
+    public function destroy(Request $request, Purchase $purchase)
     {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan menghapus pembelian.');
+        }
+
         DB::transaction(function () use ($purchase) {
             // 1. Kembalikan stok
             foreach ($purchase->items as $item) {

@@ -259,6 +259,10 @@ class OrderController extends Controller
      */
     public function update(Request $request, Order $order)
     {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan mengedit order.');
+        }
+
         $validated = $request->validate([
             'contact_id' => 'nullable|required_if:status,UNPAID|exists:contacts,id',
             'transaction_date' => 'required|date',
@@ -382,8 +386,12 @@ class OrderController extends Controller
     /**
      * Menghapus order.
      */
-    public function destroy(Order $order)
+    public function destroy(Request $request, Order $order)
     {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan menghapus order.');
+        }
+
         DB::transaction(function () use ($order) {
             // 1. Kembalikan stok (Jangan lupa kembalikan Qty ke tabel stocks)
             foreach ($order->items as $item) {

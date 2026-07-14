@@ -531,12 +531,16 @@ export default function OrderIndex({
                                     <th className="px-6 py-4 text-right">
                                         Sisa Tagihan
                                     </th>
-                                    <th className="px-6 py-4 text-right">
-                                        Modal
-                                    </th>
-                                    <th className="px-6 py-4 text-right">
-                                        Profit
-                                    </th>
+                                    {isOwner && (
+                                        <>
+                                            <th className="px-6 py-4 text-right">
+                                                Modal
+                                            </th>
+                                            <th className="px-6 py-4 text-right">
+                                                Profit
+                                            </th>
+                                        </>
+                                    )}
                                     <th className="px-6 py-4 text-center">
                                         Status
                                     </th>
@@ -613,16 +617,20 @@ export default function OrderIndex({
                                                                 order.grand_total,
                                                             )}
                                                 </td>
-                                                <td className="px-6 py-4 text-right font-medium text-red-500">
-                                                    {modalTotal > 0
-                                                        ? formatRupiah(
-                                                              modalTotal,
-                                                          )
-                                                        : "-"}
-                                                </td>
-                                                <td className="px-6 py-4 text-right font-bold text-blue-600">
-                                                    {formatRupiah(profit)}
-                                                </td>
+                                                {isOwner && (
+                                                    <>
+                                                        <td className="px-6 py-4 text-right font-medium text-red-500">
+                                                            {modalTotal > 0
+                                                                ? formatRupiah(
+                                                                      modalTotal,
+                                                                  )
+                                                                : "-"}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right font-bold text-blue-600">
+                                                            {formatRupiah(profit)}
+                                                        </td>
+                                                    </>
+                                                )}
                                                 <td className="px-6 py-4 text-center">
                                                     <span
                                                         className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(order.status)}`}
@@ -660,57 +668,65 @@ export default function OrderIndex({
                                                         >
                                                             <Eye size={16} />
                                                         </Link>
-                                                        <button
-                                                            onClick={() =>
-                                                                openPurchaseModal(
-                                                                    order,
-                                                                )
-                                                            }
-                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
-                                                            title="Input Modal / Purchase"
-                                                        >
-                                                            <ShoppingBag
-                                                                size={16}
-                                                            />
-                                                        </button>
-                                                        {order.status !==
-                                                            "PAID" && (
-                                                            <button
-                                                                onClick={() =>
-                                                                    openPaymentModal(
-                                                                        order,
-                                                                    )
-                                                                }
-                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
-                                                                title="Bayar / Cicil"
-                                                            >
-                                                                <Wallet
-                                                                    size={16}
-                                                                />
-                                                            </button>
+                                                        {isOwner && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        openPurchaseModal(
+                                                                            order,
+                                                                        )
+                                                                    }
+                                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+                                                                    title="Input Modal / Purchase"
+                                                                >
+                                                                    <ShoppingBag
+                                                                        size={16}
+                                                                    />
+                                                                </button>
+                                                                {order.status !==
+                                                                    "PAID" && (
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            openPaymentModal(
+                                                                                order,
+                                                                            )
+                                                                        }
+                                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                                                                        title="Bayar / Cicil"
+                                                                    >
+                                                                        <Wallet
+                                                                            size={16}
+                                                                        />
+                                                                    </button>
+                                                                )}
+                                                            </>
                                                         )}
-                                                        <button
-                                                            onClick={() =>
-                                                                openEditModal(
-                                                                    order,
-                                                                )
-                                                            }
-                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
-                                                            title="Edit Order"
-                                                        >
-                                                            <Pencil size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() =>
-                                                                openDeleteModal(
-                                                                    order,
-                                                                )
-                                                            }
-                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                                                            title="Hapus Order"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                        {isOwner && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        openEditModal(
+                                                                            order,
+                                                                        )
+                                                                    }
+                                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                                                                    title="Edit Order"
+                                                                >
+                                                                    <Pencil size={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        openDeleteModal(
+                                                                            order,
+                                                                        )
+                                                                    }
+                                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                                                    title="Hapus Order"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

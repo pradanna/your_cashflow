@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, useForm, router, Link } from "@inertiajs/react";
+import { Head, useForm, router, Link, usePage } from "@inertiajs/react";
 import { formatRupiah } from "@/Utils/format";
 import {
     Search,
@@ -72,11 +72,13 @@ export default function EmployeeDebts({
     accounts,
     categories,
 }) {
+    const isOwner = auth?.user?.role !== "karyawan";
     const [search, setSearch] = useState(filters.search || "");
     const [status, setStatus] = useState(filters.status || "ALL");
     const [isPaymentOpen, setPaymentOpen] = useState(false);
     const [isDetailOpen, setDetailOpen] = useState(false);
     const [selectedDebt, setSelectedDebt] = useState(null);
+    const [selectedContact, setSelectedContact] = useState(null);
 
     const paymentForm = useForm({
         account_id: "",
@@ -98,12 +100,12 @@ export default function EmployeeDebts({
         return () => clearTimeout(timer);
     }, [search, status]);
 
-    const openPaymentModal = (debt) => {
-        setSelectedDebt(debt);
+    const openPaymentModal = (contact) => {
+        setSelectedContact(contact);
         paymentForm.setData({
             account_id: accounts[0]?.id || "",
             category_id: categories.filter(c => c.type === 'INCOME')[0]?.id || "",
-            amount: debt.remaining,
+            amount: contact.total_remaining,
             transaction_date: new Date().toISOString().split("T")[0],
             note: "Potong gaji bulanan",
         });
@@ -113,17 +115,18 @@ export default function EmployeeDebts({
 
     const handlePaymentSubmit = (e) => {
         e.preventDefault();
-        paymentForm.post(route("debts.employee_payment", selectedDebt.id), {
+        paymentForm.post(route("debts.employee_bulk_payment", selectedContact.id), {
             onSuccess: () => {
                 setPaymentOpen(false);
                 setDetailOpen(false);
                 setSelectedDebt(null);
+                setSelectedContact(null);
             },
         });
     };
 
-    const openDetailModal = (debt) => {
-        setSelectedDebt(debt);
+    const openDetailModal = (contact) => {
+        setSelectedContact(contact);
         setDetailOpen(true);
     };
 
@@ -194,10 +197,10 @@ export default function EmployeeDebts({
                     {/* Cards Grid */}
                     {debts.data.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {debts.data.map((debt) => (
+                            {debts.data.map((contact) => (
                                 <div
-                                    key={debt.id}
-                                    onClick={() => openDetailModal(debt)}
+                                    key={contact.id}
+                                    onClick={() => openDetailModal(contact)}
                                     className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-4 hover:-translate-y-0.5"
                                 >
                                     <div className="flex justify-between items-start">
@@ -207,36 +210,32 @@ export default function EmployeeDebts({
                                             </div>
                                             <div>
                                                 <h3 className="font-semibold text-gray-900 leading-tight">
-                                                    {debt.contact?.name || "Karyawan"}
+                                                    {contact.name || "Karyawan"}
                                                 </h3>
                                                 <p className="text-[11px] text-gray-400 mt-0.5">
-                                                    Dibuat: {formatDate(debt.created_at)}
+                                                    Telepon: {contact.phone || "-"}
                                                 </p>
                                             </div>
                                         </div>
-                                        <DebtStatusBadge status={debt.status} />
+                                        <DebtStatusBadge status={Number(contact.total_remaining) <= 0 ? "PAID" : "UNPAID"} />
                                     </div>
 
                                     <div>
-                                        <p className="text-xs text-gray-400">Sisa Tagihan / Piutang</p>
+                                        <p className="text-xs text-gray-400">Total Sisa Tagihan / Piutang</p>
                                         <p className="text-2xl font-extrabold text-gray-900 mt-1">
-                                            {formatRupiah(debt.remaining)}
+                                            {formatRupiah(contact.total_remaining || 0)}
                                         </p>
                                         <p className="text-[11px] text-gray-400 mt-1">
-                                            Jumlah Awal: {formatRupiah(debt.amount)}
+                                            Total Bon Awal: {formatRupiah(contact.total_amount || 0)}
                                         </p>
                                     </div>
 
                                     <div className="pt-3 border-t border-gray-50 flex items-center justify-between text-xs text-gray-500">
                                         <span className="flex items-center gap-1">
                                             <FileText size={14} className="text-gray-400" />
-                                            {debt.order ? (
-                                                <span className="font-mono text-red-600 bg-red-50 px-2 py-0.5 rounded">
-                                                    {debt.order.invoice_number}
-                                                </span>
-                                            ) : (
-                                                <span>Input Manual</span>
-                                            )}
+                                            <span className="font-semibold text-gray-700 bg-gray-50 px-2 py-0.5 rounded">
+                                                {contact.debts ? contact.debts.length : 0} Transaksi Piutang
+                                            </span>
                                         </span>
                                         <span className="text-red-600 font-semibold flex items-center gap-0.5 hover:underline">
                                             Detail & Riwayat <ChevronRight size={14} />
@@ -264,17 +263,20 @@ export default function EmployeeDebts({
             </div>
 
             {/* Detail Modal */}
-            <Modal show={isDetailOpen} onClose={() => setDetailOpen(false)} maxWidth="2xl">
-                {selectedDebt && (
+            <Modal show={isDetailOpen} onClose={() => { setDetailOpen(false); }} maxWidth="2xl">
+                {selectedContact && (
                     <div className="p-6 space-y-6">
                         <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 flex-wrap">
                                 <FileText className="text-red-600" size={20} />
-                                <span>Detail Piutang Karyawan</span>
+                                <span>Detail & Riwayat Piutang Karyawan</span>
+                                <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                    Login: {auth?.user?.name} ({auth?.user?.role})
+                                </span>
                             </h3>
                             <button
                                 type="button"
-                                onClick={() => setDetailOpen(false)}
+                                onClick={() => { setDetailOpen(false); }}
                                 className="text-gray-400 hover:text-gray-600"
                             >
                                 <X size={20} />
@@ -285,66 +287,55 @@ export default function EmployeeDebts({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
                             <div>
                                 <p className="text-[11px] text-gray-400 uppercase font-semibold">Nama Karyawan</p>
-                                <p className="text-sm font-bold text-gray-900 mt-0.5">{selectedDebt.contact?.name}</p>
+                                <p className="text-sm font-bold text-gray-900 mt-0.5">{selectedContact.name}</p>
                             </div>
                             <div>
                                 <p className="text-[11px] text-gray-400 uppercase font-semibold">Status Piutang</p>
                                 <div className="mt-1">
-                                    <DebtStatusBadge status={selectedDebt.status} />
+                                    <DebtStatusBadge status={Number(selectedContact.total_remaining) <= 0 ? "PAID" : "UNPAID"} />
                                 </div>
                             </div>
                             <div>
-                                <p className="text-[11px] text-gray-400 uppercase font-semibold">Jumlah Bon Awal</p>
-                                <p className="text-sm font-semibold text-gray-900 mt-0.5">{formatRupiah(selectedDebt.amount)}</p>
+                                <p className="text-[11px] text-gray-400 uppercase font-semibold">Total Bon Awal</p>
+                                <p className="text-sm font-semibold text-gray-900 mt-0.5">{formatRupiah(selectedContact.total_amount || 0)}</p>
                             </div>
                             <div>
-                                <p className="text-[11px] text-gray-400 uppercase font-semibold">Sisa Tagihan (Belum Lunas)</p>
-                                <p className="text-base font-extrabold text-red-600 mt-0.5">{formatRupiah(selectedDebt.remaining)}</p>
+                                <p className="text-[11px] text-gray-400 uppercase font-semibold">Total Sisa Tagihan</p>
+                                <p className="text-base font-extrabold text-red-600 mt-0.5">{formatRupiah(selectedContact.total_remaining || 0)}</p>
                             </div>
-                            {selectedDebt.order && (
-                                <div className="col-span-2 border-t border-gray-200/50 pt-2.5">
-                                    <p className="text-[11px] text-gray-400 uppercase font-semibold">Referensi Invoice</p>
-                                    <p className="text-xs font-mono text-gray-700 mt-0.5">{selectedDebt.order.invoice_number}</p>
-                                </div>
-                            )}
-                            {selectedDebt.note && (
-                                <div className="col-span-2 border-t border-gray-200/50 pt-2.5">
-                                    <p className="text-[11px] text-gray-400 uppercase font-semibold">Keterangan / Catatan</p>
-                                    <p className="text-xs text-gray-600 mt-0.5">{selectedDebt.note}</p>
-                                </div>
-                            )}
                         </div>
 
-                        {/* Item Penjualan jika ada Order */}
-                        {selectedDebt.order?.items && selectedDebt.order.items.length > 0 && (
-                            <div className="space-y-2">
-                                <h4 className="font-semibold text-xs text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span>Item Penjualan (Order)</span>
-                                </h4>
-                                <div className="border border-gray-100 rounded-xl overflow-hidden text-xs">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-gray-50 text-gray-500 font-medium">
-                                            <tr>
-                                                <th className="px-4 py-2">Nama Item</th>
-                                                <th className="px-4 py-2 text-center w-16">Qty</th>
-                                                <th className="px-4 py-2 text-right">Harga</th>
-                                                <th className="px-4 py-2 text-right">Subtotal</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100 text-gray-600 bg-white">
-                                            {selectedDebt.order.items.map((item, idx) => (
-                                                <tr key={idx}>
-                                                    <td className="px-4 py-2 font-medium text-gray-900">{item.item_name}</td>
-                                                    <td className="px-4 py-2 text-center">{item.qty}</td>
-                                                    <td className="px-4 py-2 text-right">{formatRupiah(item.price)}</td>
-                                                    <td className="px-4 py-2 text-right font-semibold text-gray-900">{formatRupiah(item.subtotal)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                        {/* Rincian Transaksi Piutang */}
+                        <div className="space-y-2">
+                            <h4 className="font-semibold text-xs text-gray-400 uppercase tracking-wider">
+                                Rincian Transaksi Piutang
+                            </h4>
+                            <div className="border border-gray-100 rounded-xl overflow-hidden text-xs bg-white divide-y divide-gray-100 max-h-60 overflow-y-auto">
+                                {selectedContact.debts && selectedContact.debts.length > 0 ? (
+                                    selectedContact.debts.map((debt, idx) => (
+                                        <div key={idx} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-mono text-red-600 bg-red-50 px-2 py-0.5 rounded text-[10px]">
+                                                        {debt.order ? debt.order.invoice_number : "Input Manual"}
+                                                    </span>
+                                                    <span className="text-gray-400 text-[10px]">{formatDate(debt.created_at)}</span>
+                                                </div>
+                                                {debt.note && <p className="text-gray-500 italic text-[11px]">{debt.note}</p>}
+                                                <div className="text-[11px] text-gray-500">
+                                                    Jumlah Awal: {formatRupiah(debt.amount)} | Sisa: <span className="font-semibold text-red-600">{formatRupiah(debt.remaining)}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3 self-end md:self-center">
+                                                <DebtStatusBadge status={debt.status} />
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="p-4 text-center text-gray-400 italic">Belum ada rincian piutang.</p>
+                                )}
                             </div>
-                        )}
+                        </div>
 
                         {/* Riwayat Pembayaran / Potong Gaji */}
                         <div className="space-y-3">
@@ -353,38 +344,43 @@ export default function EmployeeDebts({
                                 <span>Riwayat Pembayaran / Potong Gaji</span>
                             </h4>
                             <div className="space-y-2 max-h-48 overflow-y-auto">
-                                {selectedDebt.transactions && selectedDebt.transactions.length > 0 ? (
-                                    selectedDebt.transactions.map((t, idx) => (
-                                        <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50/50">
-                                            <div>
-                                                <p className="text-xs font-semibold text-gray-900">
-                                                    {t.account?.name ? `Via ${t.account.name}` : "Pembayaran"}
-                                                </p>
-                                                <p className="text-[10px] text-gray-400 mt-0.5">
-                                                    {formatDate(t.transaction_date)} {t.description ? `• ${t.description}` : ""}
-                                                </p>
+                                {(() => {
+                                    const allTransactions = selectedContact.debts?.flatMap(d => d.transactions || []) || [];
+                                    allTransactions.sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date));
+                                    
+                                    return allTransactions.length > 0 ? (
+                                        allTransactions.map((t, idx) => (
+                                            <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50/50">
+                                                <div>
+                                                    <p className="text-xs font-semibold text-gray-900">
+                                                        {t.account?.name ? `Via ${t.account.name}` : "Pembayaran"}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-400 mt-0.5">
+                                                        {formatDate(t.transaction_date)} {t.description ? `• ${t.description}` : ""}
+                                                    </p>
+                                                </div>
+                                                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                                                    +{formatRupiah(t.amount)}
+                                                </span>
                                             </div>
-                                            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
-                                                +{formatRupiah(t.amount)}
-                                            </span>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-xs text-gray-400 italic text-center py-4 bg-gray-50/50 rounded-xl border border-dashed">
-                                        Belum ada riwayat pembayaran atau pemotongan gaji.
-                                    </p>
-                                )}
+                                        ))
+                                    ) : (
+                                        <p className="text-xs text-gray-400 italic text-center py-4 bg-gray-50/50 rounded-xl border border-dashed">
+                                            Belum ada riwayat pembayaran atau pemotongan gaji.
+                                        </p>
+                                    );
+                                })()}
                             </div>
                         </div>
 
                         {/* Actions */}
                         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                            <SecondaryButton onClick={() => setDetailOpen(false)}>
+                            <SecondaryButton onClick={() => { setDetailOpen(false); }}>
                                 Tutup
                             </SecondaryButton>
-                            {selectedDebt.status !== "PAID" && (
+                            {isOwner && Number(selectedContact.total_remaining) > 0 && (
                                 <PrimaryButton
-                                    onClick={() => openPaymentModal(selectedDebt)}
+                                    onClick={() => openPaymentModal(selectedContact)}
                                     className="bg-red-600 hover:bg-red-700 gap-1.5"
                                 >
                                     <Coins size={14} />
@@ -397,7 +393,7 @@ export default function EmployeeDebts({
             </Modal>
 
             {/* Payment Modal */}
-            <Modal show={isPaymentOpen} onClose={() => setPaymentOpen(false)} maxWidth="md">
+            <Modal show={isPaymentOpen} onClose={() => { setPaymentOpen(false); setSelectedContact(null); }} maxWidth="md">
                 <form onSubmit={handlePaymentSubmit} className="p-6">
                     <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
                         <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -413,19 +409,19 @@ export default function EmployeeDebts({
                         </button>
                     </div>
 
-                    {selectedDebt && (
+                    {selectedContact && (
                         <div className="mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2">
                             <div className="flex justify-between text-xs text-gray-500">
                                 <span>Karyawan:</span>
-                                <span className="font-semibold text-gray-900">{selectedDebt.contact?.name}</span>
+                                <span className="font-semibold text-gray-900">{selectedContact.name}</span>
                             </div>
                             <div className="flex justify-between text-xs text-gray-500">
-                                <span>Total Tagihan:</span>
-                                <span className="font-semibold text-gray-900">{formatRupiah(selectedDebt.amount)}</span>
+                                <span>Total Tagihan Bulan Ini:</span>
+                                <span className="font-semibold text-gray-900">{formatRupiah(selectedContact.total_amount || 0)}</span>
                             </div>
                             <div className="flex justify-between text-xs text-gray-500">
                                 <span>Sisa Belum Lunas:</span>
-                                <span className="font-bold text-red-600">{formatRupiah(selectedDebt.remaining)}</span>
+                                <span className="font-bold text-red-600">{formatRupiah(selectedContact.total_remaining || 0)}</span>
                             </div>
                         </div>
                     )}

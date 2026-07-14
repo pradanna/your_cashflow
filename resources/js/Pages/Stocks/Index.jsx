@@ -314,27 +314,37 @@ export default function StockIndex({
                                                                 size={16}
                                                             />
                                                         </button>
-                                                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
-                                                        <button
-                                                            onClick={() =>
-                                                                openEdit(stock)
-                                                            }
-                                                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                                                            title="Edit"
-                                                        >
-                                                            <Pencil size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() =>
-                                                                openDelete(
-                                                                    stock,
-                                                                )
-                                                            }
-                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                                                            title="Hapus"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                        {isOwner && (
+                                                            <>
+                                                                <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        openEdit(
+                                                                            stock,
+                                                                        )
+                                                                    }
+                                                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                                                                    title="Edit"
+                                                                >
+                                                                    <Pencil
+                                                                        size={16}
+                                                                    />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        openDelete(
+                                                                            stock,
+                                                                        )
+                                                                    }
+                                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                                    title="Hapus"
+                                                                >
+                                                                    <Trash2
+                                                                        size={16}
+                                                                    />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

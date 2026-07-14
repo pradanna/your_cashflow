@@ -2,7 +2,7 @@
 
 import React from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import {
     ArrowLeft,
     Printer,
@@ -15,6 +15,9 @@ import {
 import { Button } from "@headlessui/react";
 
 export default function OrderShow({ order }) {
+    const { props } = usePage();
+    const isOwner = props.auth?.user?.role !== "karyawan";
+
     const formatRupiah = (number) => {
         return new Intl.NumberFormat("id-ID", {
             style: "currency",
@@ -212,76 +215,78 @@ export default function OrderShow({ order }) {
                 </div>
 
                 {/* Section Modal & Profit (Analisa) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <div className="flex items-center gap-2 mb-4 text-gray-800 font-bold">
-                            <TrendingUp size={20} className="text-blue-600" />
-                            <h3>Analisa Profitabilitas</h3>
+                {isOwner && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <div className="flex items-center gap-2 mb-4 text-gray-800 font-bold">
+                                <TrendingUp size={20} className="text-blue-600" />
+                                <h3>Analisa Profitabilitas</h3>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100">
+                                    <span className="text-gray-600 text-sm">
+                                        Total Penjualan (Omzet)
+                                    </span>
+                                    <span className="font-bold text-green-700">
+                                        {formatRupiah(order.grand_total)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100">
+                                    <span className="text-gray-600 text-sm">
+                                        Total Modal (HPP/Expense)
+                                    </span>
+                                    <span className="font-bold text-red-700">
+                                        {formatRupiah(totalModal)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                    <span className="text-gray-600 text-sm">
+                                        Profit Bersih (Estimasi)
+                                    </span>
+                                    <span className="font-bold text-blue-700 text-lg">
+                                        {formatRupiah(profit)}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100">
-                                <span className="text-gray-600 text-sm">
-                                    Total Penjualan (Omzet)
-                                </span>
-                                <span className="font-bold text-green-700">
-                                    {formatRupiah(order.grand_total)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100">
-                                <span className="text-gray-600 text-sm">
-                                    Total Modal (HPP/Expense)
-                                </span>
-                                <span className="font-bold text-red-700">
-                                    {formatRupiah(totalModal)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                <span className="text-gray-600 text-sm">
-                                    Profit Bersih (Estimasi)
-                                </span>
-                                <span className="font-bold text-blue-700 text-lg">
-                                    {formatRupiah(profit)}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <h3 className="font-bold text-gray-800 mb-4">
-                            Rincian Pengeluaran (Modal)
-                        </h3>
-                        {order.purchases && order.purchases.length > 0 ? (
-                            <ul className="space-y-3">
-                                {order.purchases.map((purchase) => (
-                                    <li
-                                        key={purchase.id}
-                                        className="flex justify-between items-center text-sm border-b border-gray-50 pb-2 last:border-0"
-                                    >
-                                        <div>
-                                            <p className="font-medium text-gray-700">
-                                                {purchase.reference_number ||
-                                                    "Tanpa Nota"}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                {new Date(
-                                                    purchase.transaction_date,
-                                                ).toLocaleDateString("id-ID")}
-                                            </p>
-                                        </div>
-                                        <span className="font-medium text-red-600">
-                                            {formatRupiah(purchase.grand_total)}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="text-sm text-gray-400 italic">
-                                Belum ada data pengeluaran/modal yang diinput
-                                untuk order ini.
-                            </p>
-                        )}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <h3 className="font-bold text-gray-800 mb-4">
+                                Rincian Pengeluaran (Modal)
+                            </h3>
+                            {order.purchases && order.purchases.length > 0 ? (
+                                <ul className="space-y-3">
+                                    {order.purchases.map((purchase) => (
+                                        <li
+                                            key={purchase.id}
+                                            className="flex justify-between items-center text-sm border-b border-gray-50 pb-2 last:border-0"
+                                        >
+                                            <div>
+                                                <p className="font-medium text-gray-700">
+                                                    {purchase.reference_number ||
+                                                        "Tanpa Nota"}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {new Date(
+                                                        purchase.transaction_date,
+                                                    ).toLocaleDateString("id-ID")}
+                                                </p>
+                                            </div>
+                                            <span className="font-medium text-red-600">
+                                                {formatRupiah(purchase.grand_total)}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-gray-400 italic">
+                                    Belum ada data pengeluaran/modal yang diinput
+                                    untuk order ini.
+                                </p>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );

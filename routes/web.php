@@ -93,6 +93,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/employee-debts', [DebtController::class, 'employeeDebts'])->name('debts.employee');
         Route::post('/employee-debts/{debt}/payment', [DebtController::class, 'employeePayment'])->name('debts.employee_payment');
+        Route::post('/employee-debts/bulk-payment/{contact}', [DebtController::class, 'employeeBulkPayment'])->name('debts.employee_bulk_payment');
 
         Route::get('/transactions/print/{order}', [TransactionController::class, 'printInvoice'])->name('transactions.print_invoice');
 

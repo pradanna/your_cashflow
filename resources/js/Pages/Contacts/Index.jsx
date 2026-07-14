@@ -21,6 +21,8 @@ import TextInput from "@/Components/TextInput";
 import InputError from "@/Components/InputError";
 
 export default function ContactIndex({ auth, contacts, filters }) {
+    const isOwner = auth.user.role !== "karyawan";
+
     // --- STATE MANAGEMENT ---
     const [isFormModalOpen, setFormModalOpen] = useState(false);
     const [editingContact, setEditingContact] = useState(null);
@@ -263,32 +265,36 @@ export default function ContactIndex({ auth, contacts, filters }) {
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
                                                         <div className="flex justify-center gap-1">
-                                                            <button
-                                                                onClick={() =>
-                                                                    openEditModal(
-                                                                        contact,
-                                                                    )
-                                                                }
-                                                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                                                                title="Edit"
-                                                            >
-                                                                <Pencil
-                                                                    size={16}
-                                                                />
-                                                            </button>
-                                                            <button
-                                                                onClick={() =>
-                                                                    openDeleteModal(
-                                                                        contact,
-                                                                    )
-                                                                }
-                                                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                                                                title="Hapus"
-                                                            >
-                                                                <Trash2
-                                                                    size={16}
-                                                                />
-                                                            </button>
+                                                            {isOwner && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            openEditModal(
+                                                                                contact,
+                                                                            )
+                                                                        }
+                                                                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                                                                        title="Edit"
+                                                                    >
+                                                                        <Pencil
+                                                                            size={16}
+                                                                        />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            openDeleteModal(
+                                                                                contact,
+                                                                            )
+                                                                        }
+                                                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                                        title="Hapus"
+                                                                    >
+                                                                        <Trash2
+                                                                            size={16}
+                                                                        />
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>

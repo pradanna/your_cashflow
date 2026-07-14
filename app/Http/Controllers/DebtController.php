@@ -255,27 +255,52 @@ class DebtController extends Controller
     public function employeeDebts(Request $request)
     {
         $user = $request->user();
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
         
-        $query = Debt::where('debts.user_id', $user->owner_id)
-            ->join('contacts', 'debts.contact_id', '=', 'contacts.id')
+        $query = Contact::where('contacts.user_id', $user->owner_id)
             ->where('contacts.type', 'EMPLOYEE')
-            ->where('debts.type', 'RECEIVABLE')
-            ->leftJoin('orders', 'debts.order_id', '=', 'orders.id')
-            ->select('debts.*');
+            ->whereHas('debts', function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->where('type', 'RECEIVABLE')
+                  ->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+            })
+            ->withSum(['debts as total_remaining' => function($q) use ($startOfMonth, $endOfMonth) {
+                $q->where('type', 'RECEIVABLE')
+                  ->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+            }], 'remaining')
+            ->withSum(['debts as total_amount' => function($q) use ($startOfMonth, $endOfMonth) {
+                $q->where('type', 'RECEIVABLE')
+                  ->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
+            }], 'amount');
 
         if ($request->search) {
-            $query->where(function($q) use ($request) {
+            $query->where(function($q) use ($request, $startOfMonth, $endOfMonth) {
                 $q->where('contacts.name', 'like', '%' . $request->search . '%')
-                  ->orWhere('orders.invoice_number', 'like', '%' . $request->search . '%');
+                  ->orWhereHas('debts', function ($q2) use ($request, $startOfMonth, $endOfMonth) {
+                      $q2->where('type', 'RECEIVABLE')
+                        ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                        ->whereHas('order', function ($q3) use ($request) {
+                            $q3->where('invoice_number', 'like', '%' . $request->search . '%');
+                        });
+                  });
             });
         }
 
         if ($request->status && $request->status !== 'ALL') {
-            $query->where('debts.status', $request->status);
+            $query->whereHas('debts', function ($q) use ($request, $startOfMonth, $endOfMonth) {
+                $q->where('type', 'RECEIVABLE')
+                  ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                  ->where('status', $request->status);
+            });
         }
 
-        $debts = $query->orderBy('debts.created_at', 'desc')
-            ->with(['contact', 'order.items', 'transactions.account'])
+        $debts = $query->orderBy('contacts.name', 'asc')
+            ->with(['debts' => function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->where('type', 'RECEIVABLE')
+                  ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                  ->with(['order.items', 'transactions.account'])
+                  ->orderBy('created_at', 'desc');
+            }])
             ->paginate(15)
             ->withQueryString();
 
@@ -293,8 +318,80 @@ class DebtController extends Controller
         ]);
     }
 
+    public function employeeBulkPayment(Request $request, Contact $contact)
+    {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan mencatat pembayaran / potong gaji.');
+        }
+
+        if ($contact->user_id !== $request->user()->owner_id) {
+            abort(403);
+        }
+
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        // Get unpaid debts for this contact in the current month
+        $unpaidDebts = Debt::where('contact_id', $contact->id)
+            ->where('type', 'RECEIVABLE')
+            ->where('status', '!=', 'PAID')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $totalRemaining = $unpaidDebts->sum('remaining');
+
+        $validated = $request->validate([
+            'account_id' => 'required|exists:accounts,id',
+            'category_id' => 'required|exists:categories,id',
+            'amount' => 'required|numeric|min:0.01|max:' . $totalRemaining,
+            'transaction_date' => 'required|date',
+            'note' => 'nullable|string',
+        ]);
+
+        $paymentAmount = $validated['amount'];
+
+        DB::transaction(function () use ($request, $unpaidDebts, $validated, $paymentAmount, $contact) {
+            foreach ($unpaidDebts as $debt) {
+                if ($paymentAmount <= 0) {
+                    break;
+                }
+
+                $amountToPay = min($paymentAmount, $debt->remaining);
+                $paymentAmount -= $amountToPay;
+
+                Transaction::create([
+                    'user_id' => $request->user()->owner_id,
+                    'account_id' => $validated['account_id'],
+                    'category_id' => $validated['category_id'],
+                    'debt_id' => $debt->id,
+                    'type' => 'INCOME', // Pembayaran piutang = uang masuk
+                    'amount' => $amountToPay,
+                    'transaction_date' => $validated['transaction_date'],
+                    'description' => "Potong Gaji / Pembayaran Piutang Karyawan ({$contact->name}) " . ($validated['note'] ?? ''),
+                ]);
+
+                $debt->remaining -= $amountToPay;
+                $debt->status = ($debt->remaining <= 0) ? 'PAID' : 'PARTIAL';
+                $debt->save();
+
+                if ($debt->remaining <= 0 && $debt->order) {
+                    $order = $debt->order;
+                    $order->status = 'PAID';
+                    $order->save();
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', 'Pembayaran piutang karyawan berhasil dicatat.');
+    }
+
     public function employeePayment(Request $request, Debt $debt)
     {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan mencatat pembayaran / potong gaji.');
+        }
+
         if ($debt->user_id !== $request->user()->owner_id) {
             abort(403);
         }

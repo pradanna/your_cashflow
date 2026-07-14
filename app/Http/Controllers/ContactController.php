@@ -61,6 +61,10 @@ class ContactController extends Controller
      */
     public function update(Request $request, Contact $contact)
     {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan mengedit kontak.');
+        }
+
         if ($contact->user_id !== $request->user()->owner_id) {
             abort(403);
         }
@@ -81,9 +85,13 @@ class ContactController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Contact $contact)
+    public function destroy(Request $request, Contact $contact)
     {
-        if ($contact->user_id !== auth()->user()->owner_id) {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan menghapus kontak.');
+        }
+
+        if ($contact->user_id !== $request->user()->owner_id) {
             abort(403);
         }
 

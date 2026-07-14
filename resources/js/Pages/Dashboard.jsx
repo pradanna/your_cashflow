@@ -51,7 +51,7 @@ export default function Dashboard({
 
 
                 {/* --- QUICK ACTION SHORCUTS --- */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <Link
                         href="/orders"
                         className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-200 group"
@@ -82,23 +82,6 @@ export default function Dashboard({
                             </h4>
                             <p className="text-xs text-gray-400 mt-0.5">
                                 Lihat & sesuaikan data stok barang
-                            </p>
-                        </div>
-                    </Link>
-
-                    <Link
-                        href="/catalogs"
-                        className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-200 group"
-                    >
-                        <div className="p-4 bg-red-50 text-red-600 rounded-2xl group-hover:bg-red-600 group-hover:text-white transition-colors">
-                            <Package size={24} />
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-gray-800 text-base">
-                                Katalog Produk
-                            </h4>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                                Cek harga barang & unit penjualan
                             </p>
                         </div>
                     </Link>

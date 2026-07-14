@@ -115,6 +115,10 @@ class StockController extends Controller
      */
     public function update(Request $request, Stock $stock)
     {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan mengedit stok.');
+        }
+
         if ($stock->user_id !== $request->user()->owner_id) {
             abort(403);
         }
@@ -137,6 +141,10 @@ class StockController extends Controller
      */
     public function destroy(Request $request, Stock $stock)
     {
+        if ($request->user()->role === 'karyawan') {
+            abort(403, 'Karyawan tidak diperbolehkan menghapus stok.');
+        }
+
         if ($stock->user_id !== $request->user()->owner_id) {
             abort(403);
         }
