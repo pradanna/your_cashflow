@@ -181,6 +181,50 @@ export default function AddItemModal({
                     </div>
 
                     {/* Background calculations for Linked Purchase will run based on catalog items. */}
+                    {isOwner && (
+                        <div className="grid grid-cols-2 gap-4 border-t border-dashed pt-4 mt-2">
+                            <div className="col-span-2">
+                                <InputLabel value="Supplier (Untuk Pengeluaran/HPP)" />
+                                <Select
+                                    className="mt-1"
+                                    classNamePrefix="react-select"
+                                    options={suppliers.map((s) => ({
+                                        value: s.id,
+                                        label: s.name,
+                                    }))}
+                                    value={
+                                        suppliers
+                                            .map((s) => ({ value: s.id, label: s.name }))
+                                            .find((opt) => opt.value == newItem.supplier_id) || null
+                                    }
+                                    onChange={(opt) =>
+                                        setNewItem({
+                                            ...newItem,
+                                            supplier_id: opt ? String(opt.value) : "",
+                                        })
+                                    }
+                                    placeholder="-- Pilih Supplier --"
+                                    isClearable
+                                    isSearchable
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <InputLabel value="Harga Beli Satuan (HPP)" />
+                                <TextInput
+                                    type="number"
+                                    className="w-full mt-1"
+                                    value={newItem.purchase_price}
+                                    onChange={(e) =>
+                                        setNewItem({
+                                            ...newItem,
+                                            purchase_price: e.target.value,
+                                        })
+                                    }
+                                    placeholder="0"
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     <div className="pt-2 text-right">
                         <p className="text-sm text-gray-500">

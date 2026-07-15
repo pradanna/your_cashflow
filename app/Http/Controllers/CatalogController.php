@@ -23,8 +23,13 @@ class CatalogController extends Controller
         $itemsQuery = Item::where('user_id', $user->owner_id)
             ->with('contact'); // Eager load supplier jika ada
 
-        if ($tab === 'items' && $search) {
-            $itemsQuery->where('name', 'like', "%{$search}%");
+        if ($tab === 'items') {
+            if ($search) {
+                $itemsQuery->where('name', 'like', "%{$search}%");
+            }
+            if ($request->supplier_id) {
+                $itemsQuery->where('contact_id', $request->supplier_id);
+            }
         }
 
         // 2. Query untuk Supplier Items (Pembelian)
@@ -171,5 +176,45 @@ class CatalogController extends Controller
     {
         $supplierItem->delete();
         return redirect()->back()->with('success', 'Item supplier berhasil dihapus.');
+    }
+
+    /**
+     * Menyalin item ke supplier lain.
+     */
+    public function copyItem(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:items,supplier_items',
+            'item_id' => 'required|integer',
+            'supplier_id' => 'required|exists:contacts,id',
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'purchase_price' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
+            'unit' => 'required|string|max:50',
+            'is_stock_active' => 'nullable|boolean',
+        ]);
+
+        if ($validated['type'] === 'items') {
+            $request->user()->items()->create([
+                'name' => $validated['name'],
+                'price' => $validated['price'],
+                'purchase_price' => $validated['purchase_price'],
+                'contact_id' => $validated['supplier_id'],
+                'unit' => $validated['unit'],
+                'is_stock_active' => $validated['is_stock_active'] ?? true,
+            ]);
+        } else {
+            SupplierItem::create([
+                'user_id' => $request->user()->owner_id,
+                'name' => $validated['name'],
+                'contact_id' => $validated['supplier_id'],
+                'price' => $validated['price'],
+                'selling_price' => $validated['selling_price'],
+                'unit' => $validated['unit'],
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Item berhasil disalin ke supplier lain.');
     }
 }

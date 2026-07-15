@@ -59,6 +59,7 @@ Route::middleware('auth')->group(function () {
 
         // Katalog & Item Custom (Owner Only)
         Route::resource('catalogs', CatalogController::class);
+        Route::post('/catalogs/copy', [CatalogController::class, 'copyItem'])->name('catalogs.copy');
         Route::post('/items/store', [CatalogController::class, 'storeItem'])->name('items.store_custom');
         Route::put('/items/{item}', [CatalogController::class, 'updateItem'])->name('items.update');
         Route::delete('/items/{item}', [CatalogController::class, 'destroyItem'])->name('items.destroy');

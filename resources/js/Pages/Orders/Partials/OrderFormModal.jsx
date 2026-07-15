@@ -237,13 +237,104 @@ export default function OrderFormModal({
 
                         {/* RINGKASAN AKHIR KARYAWAN */}
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-500">Total Penjualan</span>
-                                <span className="font-bold text-gray-900 text-lg">
-                                    {formatRupiah(grandTotal)}
-                                </span>
-                            </div>
+                            {isOwner ? (
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500">Total Penjualan</span>
+                                        <span className="font-bold text-gray-900">
+                                            {formatRupiah(grandTotal)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500">Total Pengeluaran</span>
+                                        <span className="font-bold text-red-600">
+                                            {formatRupiah(data.linked_purchases?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm border-t pt-2">
+                                        <span className="text-gray-700 font-medium">Estimasi Profit</span>
+                                        <span className={`font-bold text-lg ${
+                                            (grandTotal - (data.linked_purchases?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0)) >= 0
+                                                ? "text-blue-600"
+                                                : "text-red-600"
+                                        }`}>
+                                            {formatRupiah(grandTotal - (data.linked_purchases?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0))}
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500">Total Penjualan</span>
+                                    <span className="font-bold text-gray-900 text-lg">
+                                        {formatRupiah(grandTotal)}
+                                    </span>
+                                </div>
+                            )}
                         </div>
+
+                        {isOwner && (
+                            <div className="flex flex-col flex-1 mt-4">
+                                <div className="flex justify-between items-center border-b pb-2 mb-3">
+                                    <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                                        <ShoppingBag size={16} /> Pengeluaran (Modal per Nota)
+                                    </h3>
+                                </div>
+                                <div className="flex bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-gray-100 text-gray-600 font-medium border-b border-gray-200">
+                                            <tr>
+                                                <th className="px-4 py-2">Item Pengeluaran</th>
+                                                <th className="px-4 py-2 text-center w-16">Qty</th>
+                                                <th className="px-4 py-2 text-right">Total</th>
+                                                <th className="px-4 py-2 w-8"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {data.linked_purchases && data.linked_purchases.length > 0 ? (
+                                                data.linked_purchases.map((purchase, index) => {
+                                                    const supplier = suppliers.find(s => String(s.id) === String(purchase.supplier_id));
+                                                    return (
+                                                        <tr key={index} className="bg-white">
+                                                            <td className="px-4 py-2">
+                                                                <div className="font-medium text-gray-900 leading-tight">
+                                                                    {purchase.item_name}
+                                                                </div>
+                                                                {supplier && (
+                                                                    <div className="text-[10px] text-gray-400 mt-1">
+                                                                        Supplier: {supplier.name}
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-center">
+                                                                {purchase.qty}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-right font-medium">
+                                                                {formatRupiah(purchase.amount)}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-center">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveLinkedPurchase(index)}
+                                                                    className="text-red-400 hover:text-red-600"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="4" className="px-4 py-6 text-center text-gray-400 text-xs italic">
+                                                        Belum ada pengeluaran linked.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
                         
                         <InputError message={errors.items} className="mt-2" />
                     </div>

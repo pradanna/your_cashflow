@@ -9,6 +9,7 @@ import {
     X,
     Pencil,
     Trash2,
+    Copy,
 } from "lucide-react";
 import PrimaryButton from "@/Components/PrimaryButton";
 import SecondaryButton from "@/Components/SecondaryButton";
@@ -31,6 +32,7 @@ export default function CatalogIndex({
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
     const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [isCopyModalOpen, setCopyModalOpen] = useState(false);
 
     // State untuk filter
     const [search, setSearch] = useState(filters.search || "");
@@ -59,6 +61,18 @@ export default function CatalogIndex({
         supplier_id: "",
     });
 
+    const copyForm = useForm({
+        type: "",
+        item_id: "",
+        supplier_id: "",
+        name: "",
+        price: "",
+        purchase_price: "",
+        selling_price: "",
+        unit: "",
+        is_stock_active: true,
+    });
+
     // Handle Filter Trigger
     const handleFilter = () => {
         router.get(
@@ -66,8 +80,7 @@ export default function CatalogIndex({
             {
                 tab: activeTab,
                 search: search,
-                supplier_id:
-                    activeTab === "supplier_items" ? supplierFilter : undefined,
+                supplier_id: supplierFilter || undefined,
             },
             { preserveState: true, replace: true, preserveScroll: true },
         );
@@ -176,6 +189,35 @@ export default function CatalogIndex({
         setSelectedItem(null);
     };
 
+    const openCopyModal = (item) => {
+        copyForm.clearErrors();
+        copyForm.setData({
+            type: activeTab,
+            item_id: item.id,
+            supplier_id: "",
+            name: item.name,
+            price: item.price,
+            purchase_price: item.purchase_price || "",
+            selling_price: item.selling_price || "",
+            unit: item.unit,
+            is_stock_active: item.is_stock_active ?? true,
+        });
+        setSelectedItem(item);
+        setCopyModalOpen(true);
+    };
+
+    const handleCopySubmit = (e) => {
+        e.preventDefault();
+        copyForm.post(route("catalogs.copy"), {
+            onSuccess: () => {
+                setCopyModalOpen(false);
+                setSelectedItem(null);
+                copyForm.reset();
+            },
+            preserveScroll: true,
+        });
+    };
+
     // --- UI HELPERS ---
     const renderTableContent = () => {
         const dataSet = activeTab === "items" ? items : supplierItems;
@@ -264,6 +306,13 @@ export default function CatalogIndex({
                 <td className="px-6 py-4 text-center">
                     <div className="flex justify-center gap-1">
                         <button
+                            onClick={() => openCopyModal(item)}
+                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg"
+                            title="Copy ke Supplier Lain"
+                        >
+                            <Copy size={16} />
+                        </button>
+                        <button
                             onClick={() => openEditModal(item)}
                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                             title="Edit"
@@ -318,22 +367,20 @@ export default function CatalogIndex({
                                     onKeyDown={handleSearchKeyDown}
                                 />
                             </div>
-                            {activeTab === "supplier_items" && (
-                                <select
-                                    className="px-4 py-2 rounded-xl border-gray-200 focus:border-red-500 focus:ring-red-500 text-sm bg-white"
-                                    value={supplierFilter}
-                                    onChange={(e) =>
-                                        setSupplierFilter(e.target.value)
-                                    }
-                                >
-                                    <option value="">Semua Supplier</option>
-                                    {suppliers.map((sup) => (
-                                        <option key={sup.id} value={sup.id}>
-                                            {sup.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            )}
+                            <select
+                                className="px-4 py-2 rounded-xl border-gray-200 focus:border-red-500 focus:ring-red-500 text-sm bg-white"
+                                value={supplierFilter}
+                                onChange={(e) =>
+                                    setSupplierFilter(e.target.value)
+                                }
+                            >
+                                <option value="">Semua Supplier</option>
+                                {suppliers.map((sup) => (
+                                    <option key={sup.id} value={sup.id}>
+                                        {sup.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <PrimaryButton
                             onClick={openModal}
@@ -750,6 +797,177 @@ export default function CatalogIndex({
                         </DangerButton>
                     </div>
                 </div>
+            </Modal>
+
+            {/* Modal Copy */}
+            <Modal
+                show={isCopyModalOpen}
+                onClose={() => setCopyModalOpen(false)}
+            >
+                <form onSubmit={handleCopySubmit} className="p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-lg font-bold text-gray-900">
+                            Salin ke Supplier Lain
+                        </h2>
+                        <button
+                            type="button"
+                            onClick={() => setCopyModalOpen(false)}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <InputLabel htmlFor="copy_supplier_id" value="Pilih Supplier Tujuan" />
+                            <select
+                                id="copy_supplier_id"
+                                value={copyForm.data.supplier_id}
+                                onChange={(e) =>
+                                    copyForm.setData("supplier_id", e.target.value)
+                                }
+                                className="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
+                                required
+                            >
+                                <option value="">-- Pilih Supplier --</option>
+                                {suppliers.map((sup) => (
+                                    <option key={sup.id} value={sup.id}>
+                                        {sup.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError
+                                message={copyForm.errors.supplier_id}
+                                className="mt-2"
+                            />
+                        </div>
+
+                        <div>
+                            <InputLabel htmlFor="copy_name" value="Nama Item" />
+                            <TextInput
+                                id="copy_name"
+                                value={copyForm.data.name}
+                                onChange={(e) =>
+                                    copyForm.setData("name", e.target.value)
+                                }
+                                className="mt-1 block w-full"
+                                required
+                            />
+                            <InputError
+                                message={copyForm.errors.name}
+                                className="mt-2"
+                            />
+                        </div>
+
+                        {copyForm.data.type === "items" ? (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <InputLabel htmlFor="copy_price" value="Harga Jual" />
+                                    <TextInput
+                                        id="copy_price"
+                                        type="number"
+                                        value={copyForm.data.price}
+                                        onChange={(e) =>
+                                            copyForm.setData("price", e.target.value)
+                                        }
+                                        className="mt-1 block w-full"
+                                        required
+                                    />
+                                    <InputError
+                                        message={copyForm.errors.price}
+                                        className="mt-2"
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel htmlFor="copy_purchase_price" value="Harga Beli (Modal)" />
+                                    <TextInput
+                                        id="copy_purchase_price"
+                                        type="number"
+                                        value={copyForm.data.purchase_price}
+                                        onChange={(e) =>
+                                            copyForm.setData("purchase_price", e.target.value)
+                                        }
+                                        className="mt-1 block w-full"
+                                    />
+                                    <InputError
+                                        message={copyForm.errors.purchase_price}
+                                        className="mt-2"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <InputLabel htmlFor="copy_price_sup" value="Harga Beli" />
+                                    <TextInput
+                                        id="copy_price_sup"
+                                        type="number"
+                                        value={copyForm.data.price}
+                                        onChange={(e) =>
+                                            copyForm.setData("price", e.target.value)
+                                        }
+                                        className="mt-1 block w-full"
+                                        required
+                                    />
+                                    <InputError
+                                        message={copyForm.errors.price}
+                                        className="mt-2"
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel htmlFor="copy_selling_price" value="Harga Jual Rekomendasi" />
+                                    <TextInput
+                                        id="copy_selling_price"
+                                        type="number"
+                                        value={copyForm.data.selling_price}
+                                        onChange={(e) =>
+                                            copyForm.setData("selling_price", e.target.value)
+                                        }
+                                        className="mt-1 block w-full"
+                                    />
+                                    <InputError
+                                        message={copyForm.errors.selling_price}
+                                        className="mt-2"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <InputLabel htmlFor="copy_unit" value="Unit" />
+                            <select
+                                id="copy_unit"
+                                value={copyForm.data.unit}
+                                onChange={(e) =>
+                                    copyForm.setData("unit", e.target.value)
+                                }
+                                className="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm"
+                                required
+                            >
+                                <option value="">Pilih Unit</option>
+                                <option value="meteran">meteran</option>
+                                <option value="pcs">pcs</option>
+                            </select>
+                            <InputError
+                                message={copyForm.errors.unit}
+                                className="mt-2"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-6">
+                        <SecondaryButton type="button" onClick={() => setCopyModalOpen(false)}>
+                            Batal
+                        </SecondaryButton>
+                        <PrimaryButton
+                            className="bg-green-600 hover:bg-green-700"
+                            disabled={copyForm.processing}
+                        >
+                            {copyForm.processing ? "Menyalin..." : "Salin Sekarang"}
+                        </PrimaryButton>
+                    </div>
+                </form>
             </Modal>
         </AuthenticatedLayout>
     );
