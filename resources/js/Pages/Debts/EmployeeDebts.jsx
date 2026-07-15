@@ -102,6 +102,7 @@ export default function EmployeeDebts({
 
     const openPaymentModal = (contact) => {
         setSelectedContact(contact);
+        setSelectedDebt(null);
         paymentForm.setData({
             account_id: accounts[0]?.id || "",
             category_id: categories.filter(c => c.type === 'INCOME')[0]?.id || "",
@@ -113,9 +114,26 @@ export default function EmployeeDebts({
         setPaymentOpen(true);
     };
 
+    const openSinglePaymentModal = (debt) => {
+        setSelectedDebt(debt);
+        setSelectedContact(null);
+        paymentForm.setData({
+            account_id: accounts[0]?.id || "",
+            category_id: categories.filter(c => c.type === 'INCOME')[0]?.id || "",
+            amount: debt.remaining,
+            transaction_date: new Date().toISOString().split("T")[0],
+            note: `Potong gaji nota ${debt.order ? debt.order.invoice_number : 'Manual'}`,
+        });
+        paymentForm.clearErrors();
+        setPaymentOpen(true);
+    };
+
     const handlePaymentSubmit = (e) => {
         e.preventDefault();
-        paymentForm.post(route("debts.employee_bulk_payment", selectedContact.id), {
+        const routeName = selectedDebt ? "debts.payment" : "debts.employee_bulk_payment";
+        const routeParam = selectedDebt ? selectedDebt.id : selectedContact.id;
+        
+        paymentForm.post(route(routeName, routeParam), {
             onSuccess: () => {
                 setPaymentOpen(false);
                 setDetailOpen(false);
@@ -343,8 +361,17 @@ export default function EmployeeDebts({
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-3 self-end md:self-start md:pt-1">
+                                            <div className="flex flex-col md:items-end gap-2 self-end md:self-start md:pt-1">
                                                 <DebtStatusBadge status={debt.status} />
+                                                {isOwner && debt.status !== 'PAID' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openSinglePaymentModal(debt)}
+                                                        className="px-2 py-1 text-[10px] font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                                                    >
+                                                        Bayar Nota
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ))
@@ -426,7 +453,20 @@ export default function EmployeeDebts({
                         </button>
                     </div>
 
-                    {selectedContact && (
+                    {selectedDebt ? (
+                        <div className="mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2">
+                            <div className="flex justify-between text-xs text-gray-500">
+                                <span>Nota/Invoice:</span>
+                                <span className="font-mono font-semibold text-red-600">
+                                    {selectedDebt.order ? selectedDebt.order.invoice_number : "Input Manual"}
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500">
+                                <span>Sisa Tagihan Nota:</span>
+                                <span className="font-bold text-red-600">{formatRupiah(selectedDebt.remaining || 0)}</span>
+                            </div>
+                        </div>
+                    ) : selectedContact ? (
                         <div className="mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2">
                             <div className="flex justify-between text-xs text-gray-500">
                                 <span>Karyawan:</span>
@@ -441,7 +481,7 @@ export default function EmployeeDebts({
                                 <span className="font-bold text-red-600">{formatRupiah(selectedContact.total_remaining || 0)}</span>
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                     <div className="space-y-4">
                         <div>
@@ -489,7 +529,7 @@ export default function EmployeeDebts({
                                 className="w-full mt-1"
                                 value={paymentForm.data.amount}
                                 onChange={(e) => paymentForm.setData("amount", e.target.value)}
-                                max={selectedDebt?.remaining}
+                                max={selectedDebt ? selectedDebt.remaining : selectedContact?.total_remaining}
                                 step="0.01"
                                 required
                             />
