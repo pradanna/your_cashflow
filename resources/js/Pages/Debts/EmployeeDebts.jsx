@@ -313,8 +313,8 @@ export default function EmployeeDebts({
                             <div className="border border-gray-100 rounded-xl overflow-hidden text-xs bg-white divide-y divide-gray-100 max-h-60 overflow-y-auto">
                                 {selectedContact.debts && selectedContact.debts.length > 0 ? (
                                     selectedContact.debts.map((debt, idx) => (
-                                        <div key={idx} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                            <div className="space-y-1">
+                                        <div key={idx} className="p-4 flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                            <div className="space-y-1 flex-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-mono text-red-600 bg-red-50 px-2 py-0.5 rounded text-[10px]">
                                                         {debt.order ? debt.order.invoice_number : "Input Manual"}
@@ -325,8 +325,25 @@ export default function EmployeeDebts({
                                                 <div className="text-[11px] text-gray-500">
                                                     Jumlah Awal: {formatRupiah(debt.amount)} | Sisa: <span className="font-semibold text-red-600">{formatRupiah(debt.remaining)}</span>
                                                 </div>
+                                                {debt.order && debt.order.items && debt.order.items.length > 0 && (
+                                                    <div className="mt-2 p-2 bg-gray-50 rounded-xl space-y-1 border border-gray-100">
+                                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Item Dipesan:</p>
+                                                        <ul className="divide-y divide-gray-100/50">
+                                                            {debt.order.items.map((item, itemIdx) => (
+                                                                <li key={itemIdx} className="flex justify-between items-center text-[11px] py-1 text-gray-600">
+                                                                    <span>
+                                                                        {item.item_name} <span className="text-gray-400 font-normal">({parseFloat(item.qty)}x)</span>
+                                                                    </span>
+                                                                    <span className="font-medium text-gray-900">
+                                                                        {formatRupiah(item.subtotal || (item.price * item.qty))}
+                                                                    </span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="flex items-center gap-3 self-end md:self-center">
+                                            <div className="flex items-center gap-3 self-end md:self-start md:pt-1">
                                                 <DebtStatusBadge status={debt.status} />
                                             </div>
                                         </div>

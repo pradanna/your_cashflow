@@ -69,17 +69,17 @@ export default function OrderFormModal({
                                 )}
                                 onChange={(selectedOption) => {
                                     const contactId = selectedOption ? selectedOption.value : "";
-                                    
+
                                     // Cari tau apakah kontak baru adalah employee
                                     const selectedContact = contacts.find(c => c.id == contactId);
                                     const isEmployee = selectedContact && selectedContact.type === 'EMPLOYEE';
-                                    
+
                                     // Update harga item yang sudah ada di list sesuai tipe kontak
                                     const updatedItems = data.items.map(item => {
                                         const catalogItem = items.find(i => String(i.id) === String(item.item_id));
                                         if (catalogItem) {
-                                            const priceToUse = isEmployee && parseFloat(catalogItem.purchase_price) > 0 
-                                                ? catalogItem.purchase_price 
+                                            const priceToUse = isEmployee && parseFloat(catalogItem.purchase_price) > 0
+                                                ? catalogItem.purchase_price
                                                 : catalogItem.price;
                                             return {
                                                 ...item,
@@ -253,11 +253,10 @@ export default function OrderFormModal({
                                     </div>
                                     <div className="flex justify-between items-center text-sm border-t pt-2">
                                         <span className="text-gray-700 font-medium">Estimasi Profit</span>
-                                        <span className={`font-bold text-lg ${
-                                            (grandTotal - (data.linked_purchases?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0)) >= 0
+                                        <span className={`font-bold text-lg ${(grandTotal - (data.linked_purchases?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0)) >= 0
                                                 ? "text-blue-600"
                                                 : "text-red-600"
-                                        }`}>
+                                            }`}>
                                             {formatRupiah(grandTotal - (data.linked_purchases?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0))}
                                         </span>
                                     </div>
@@ -335,7 +334,7 @@ export default function OrderFormModal({
                                 </div>
                             </div>
                         )}
-                        
+
                         <InputError message={errors.items} className="mt-2" />
                     </div>
                 </div>
