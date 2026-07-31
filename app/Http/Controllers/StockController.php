@@ -30,7 +30,7 @@ class StockController extends Controller
             $stocksQuery->where('name', 'like', "%{$search}%");
         }
 
-        $stocks = $stocksQuery->latest()->paginate(10)->withQueryString();
+        $stocks = $stocksQuery->latest()->get();
 
         // 2. Calculate Stats
         $allStocks = Stock::where('user_id', $user->owner_id)->get();

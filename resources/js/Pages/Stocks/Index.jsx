@@ -253,8 +253,8 @@ export default function StockIndex({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {stocks.data.length > 0 ? (
-                                        stocks.data.map((stock) => (
+                                    {stocks.length > 0 ? (
+                                        stocks.map((stock) => (
                                             <tr
                                                 key={stock.id}
                                                 className="hover:bg-gray-50/50"
