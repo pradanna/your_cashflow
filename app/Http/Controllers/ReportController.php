@@ -271,7 +271,7 @@ class ReportController extends Controller
 
         $query->whereBetween(DB::raw('COALESCE(orders.transaction_date, purchases.transaction_date, DATE(debts.created_at))'), [$dateStart, $dateEnd]);
 
-        $debts = $query->orderBy('debts.transaction_date', 'asc')->get();
+        $debts = $query->orderBy(DB::raw('COALESCE(orders.transaction_date, purchases.transaction_date, DATE(debts.created_at))'), 'asc')->get();
 
         $data = [
             'contact' => $contact,
