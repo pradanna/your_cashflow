@@ -428,7 +428,9 @@ export default function DebtSummary({ auth, payables, receivables, filters }) {
                                 </button>
                             </div>
                             <div className="p-0 overflow-y-auto flex-1 bg-gray-50">
-                                {selectedContact.details.map((debt, idx) => (
+                                {[...selectedContact.details]
+                                    .sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date))
+                                    .map((debt, idx) => (
                                     <div
                                         key={debt.id}
                                         className="bg-white p-4 border-b border-gray-100 last:border-0"
